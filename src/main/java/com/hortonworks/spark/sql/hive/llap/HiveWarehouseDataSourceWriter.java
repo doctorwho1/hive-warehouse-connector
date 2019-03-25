@@ -78,11 +78,14 @@ public class HiveWarehouseDataSourceWriter implements DataSourceWriter {
     this.mode = mode;
     this.path = new Path(path, jobId);
     this.conf = conf;
-    populateDBTableNames();
+    populateDBTableNames(options.get("database"));
   }
 
-  private void populateDBTableNames() {
-    String database = HWConf.DEFAULT_DB.getFromOptionsMap(options);
+  private void populateDBTableNames(String optionDatabase) {
+    String database = optionDatabase;
+    if(database == null) {
+      database = HWConf.DEFAULT_DB.getFromOptionsMap(options);
+    }
     String table = options.get("table");
     SchemaUtil.TableRef tableRef = SchemaUtil.getDbTableNames(database, table);
     this.tableName = tableRef.tableName;
