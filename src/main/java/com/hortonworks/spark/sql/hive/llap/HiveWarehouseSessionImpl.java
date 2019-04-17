@@ -65,7 +65,7 @@ public class HiveWarehouseSessionImpl extends com.hortonworks.hwc.HiveWarehouseS
   }
 
   public Dataset<Row> executeQuery(String sql) {
-    return executeQueryInternal(sql, null);
+    return executeSmart(EXECUTE_QUERY_LLAP, sql, null);
   }
 
   public Dataset<Row> executeQuery(String sql, boolean useSplitsEqualToSparkCores) {
