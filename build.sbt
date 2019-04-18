@@ -75,6 +75,7 @@ libraryDependencies ++= Seq(
     .exclude("org.apache.hadoop", "hadoop-annotations")
     .exclude("org.apache.hadoop", "hadoop-auth")
     .exclude("org.apache.hadoop", "hadoop-hdfs")
+    .exclude("org.apache.hadoop", "hadoop-yarn-registry")
     .exclude("com.fasterxml.jackson.core", "jackson-databind"),
   ("org.apache.hive" % "hive-service" % hiveVersion)
     .exclude("org.apache.hadoop", "hadoop-aws")
