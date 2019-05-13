@@ -21,6 +21,8 @@ import java.net.URI
 import java.sql.{Connection, DatabaseMetaData, Driver, DriverManager, ResultSet, ResultSetMetaData, SQLException}
 import java.util.{Properties, StringJoiner}
 
+import com.hortonworks.spark.sql.hive.llap.common.{Column, DescribeTableOutput}
+
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 
@@ -177,6 +179,50 @@ class JDBCWrapper {
   }
 
   /**
+    * Executes 'describe formatted' on given table
+    * As of now, only populates columns and partitioned columns.
+    *
+    * @param conn JDBC connection
+    * @param dbName Database name
+    * @param tableName Table name
+    * @return DescribeTableOutput
+    */
+  def describeTable(conn: Connection, dbName: String, tableName: String): DescribeTableOutput = {
+    useDatabase(conn, dbName)
+    val stmt = conn.prepareStatement(s"DESC FORMATTED $dbName.$tableName")
+    val rs: ResultSet = stmt.executeQuery()
+    try {
+      var partInfoSeen = false
+      var detailedInfoSeen = false
+      val columns = new java.util.ArrayList[Column]()
+      val partitionedCols = new java.util.ArrayList[Column]()
+      // breaking on detailedInfoSeen as of now
+      while (rs.next() && !detailedInfoSeen) {
+        val colName = rs.getString("col_name")
+        if (!colName.trim.isEmpty && !colName.startsWith("#")) {
+          val dataType = rs.getString("data_type")
+          val comment = rs.getString("comment")
+          if (partInfoSeen) {
+            partitionedCols.add(new Column(colName, dataType, comment))
+          } else {
+            columns.add(new Column(colName, dataType, comment))
+          }
+        } else if (colName.startsWith("# Partition Information")) {
+          partInfoSeen = true
+        } else if (colName.startsWith("# Detailed Table Information")) {
+          detailedInfoSeen = true
+        }
+      }
+      val describeTableOutput = new DescribeTableOutput
+      describeTableOutput.setColumns(columns)
+      describeTableOutput.setPartitionedColumns(partitionedCols)
+      describeTableOutput
+    } finally {
+      rs.close()
+    }
+  }
+
+  /**
     * Drops the table.
     * @param conn JDBC connection
     * @param dbName Database name
@@ -312,6 +358,17 @@ class JDBCWrapper {
     if (currentDatabase != null) {
       val stmt = conn.prepareStatement(s"USE $currentDatabase")
       stmt.execute()
+      stmt.close()
+    }
+  }
+
+  @annotation.varargs
+  def setSessionLevelProps(conn: Connection, props: String*) {
+    if (props != null) {
+      val stmt = conn.createStatement()
+      for (elem <- props) {
+        stmt.execute(s"SET $elem")
+      }
       stmt.close()
     }
   }

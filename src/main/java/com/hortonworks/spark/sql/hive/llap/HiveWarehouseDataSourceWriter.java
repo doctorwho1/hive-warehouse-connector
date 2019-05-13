@@ -18,11 +18,16 @@
 package com.hortonworks.spark.sql.hive.llap;
 
 import java.sql.Connection;
+import java.util.List;
 import java.util.Map;
 
+import com.hortonworks.spark.sql.hive.llap.common.Column;
+import com.hortonworks.spark.sql.hive.llap.common.DescribeTableOutput;
+import com.hortonworks.spark.sql.hive.llap.query.builder.LoadDataQueryBuilder;
 import com.hortonworks.spark.sql.hive.llap.util.SchemaUtil;
 import com.hortonworks.spark.sql.hive.llap.util.SerializableHadoopConfiguration;
 import com.hortonworks.spark.sql.hive.llap.util.SparkToHiveRecordMapper;
+import org.apache.commons.lang3.BooleanUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.spark.sql.SaveMode;
@@ -34,7 +39,6 @@ import org.apache.spark.sql.types.StructType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.Option;
-import static com.hortonworks.spark.sql.hive.llap.util.HiveQlUtil.loadInto;
 
 /**
  * Data source writer implementation to facilitate creation of {@link DataWriterFactory} and drive the writing process.
@@ -51,7 +55,7 @@ import static com.hortonworks.spark.sql.hive.llap.util.HiveQlUtil.loadInto;
  * <br/>
  * Writer will try to rearrange fields of dataframe in the same order as hive table columns if following conditions hold:
  * <br/>
- * 2.1) Specified table exists in hive and specified savemode is not {@link SaveMode#Overwrite}
+ * 2.1) Specified table exists in hive
  * <br/>
  * 2.2) All the column names in dataframe are identical to those of hive table.
  * <br/>
@@ -69,6 +73,9 @@ public class HiveWarehouseDataSourceWriter implements DataSourceWriter {
   private boolean tableExists;
   private String tableName;
   private String databaseName;
+  private SparkToHiveRecordMapper sparkToHiveRecordMapper;
+  private boolean strictColumnNamesMapping;
+  private DescribeTableOutput describeTableOutput;
 
   public HiveWarehouseDataSourceWriter(Map<String, String> options, String jobId, StructType schema,
                                        Path path, Configuration conf, SaveMode mode) {
@@ -79,6 +86,8 @@ public class HiveWarehouseDataSourceWriter implements DataSourceWriter {
     this.path = new Path(path, jobId);
     this.conf = conf;
     populateDBTableNames(options.get("database"));
+    this.strictColumnNamesMapping =
+        BooleanUtils.toBoolean(HWConf.WRITE_PATH_STRICT_COLUMN_NAMES_MAPPING.getFromOptionsMap(options));
   }
 
   private void populateDBTableNames(String optionDatabase) {
@@ -97,14 +106,21 @@ public class HiveWarehouseDataSourceWriter implements DataSourceWriter {
     String hiveCols[] = null;
     try (Connection connection = getConnection()) {
       this.tableExists = DefaultJDBCWrapper.tableExists(connection, databaseName, tableName);
-      //for SaveMode.Overwrite, existing hiveCols does not matter as table will be dropped anyway
-      if (this.tableExists && !SaveMode.Overwrite.equals(mode)) {
-        hiveCols = DefaultJDBCWrapper.getTableColumns(connection, databaseName, tableName);
+      if (this.tableExists) {
+        this.describeTableOutput = DefaultJDBCWrapper.describeTable(connection, databaseName, tableName);
+        hiveCols = new String[describeTableOutput.getColumns().size() + describeTableOutput.getPartitionedColumns().size()];
+        int i = 0;
+        for (Column column : describeTableOutput.getColumns()) {
+          hiveCols[i++] = column.getName();
+        }
+        for (Column column : describeTableOutput.getPartitionedColumns()) {
+          hiveCols[i++] = column.getName();
+        }
       }
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
-    SparkToHiveRecordMapper sparkToHiveRecordMapper = new SparkToHiveRecordMapper(schema, hiveCols);
+    this.sparkToHiveRecordMapper = new SparkToHiveRecordMapper(schema, hiveCols);
     return new HiveWarehouseDataWriterFactory(jobId, schema, path, new SerializableHadoopConfiguration(conf), sparkToHiveRecordMapper);
   }
 
@@ -148,7 +164,7 @@ public class HiveWarehouseDataSourceWriter implements DataSourceWriter {
   private void handleWriteWithSaveMode(String database, String table, Connection conn) {
     boolean createTable = false;
     boolean loadData = false;
-    String truncateOption = options.get(HWConf.TRUNCATE_OPTION_KEY);
+    boolean overwrite = false;
     switch (mode) {
       case ErrorIfExists:
         if (tableExists) {
@@ -157,24 +173,13 @@ public class HiveWarehouseDataSourceWriter implements DataSourceWriter {
         createTable = true;
         loadData = true;
         break;
+      //same behavior for overwrite and append apart from `overwrite` flag
+      case Overwrite:
+        overwrite = true;
       case Append:
         //create if table does not exist
         //https://lists.apache.org/thread.html/40e6630f608802b31e6fdc537cf3ddbc07fe2d48c2ad51df91ae6e67@%3Cdev.spark.apache.org%3E
         if (!tableExists) {
-          createTable = true;
-        }
-        loadData = true;
-        break;
-      case Overwrite:
-        if (tableExists) {
-          //option("truncate", "true")
-          if ("true".equalsIgnoreCase(truncateOption)) {
-            DefaultJDBCWrapper.truncateTable(conn, database, table);
-          } else {
-            DefaultJDBCWrapper.dropTable(conn, database, table, false);
-            createTable = true;
-          }
-        } else {
           createTable = true;
         }
         loadData = true;
@@ -188,15 +193,32 @@ public class HiveWarehouseDataSourceWriter implements DataSourceWriter {
         break;
     }
 
-    LOG.info("Handling write: database:{}, table:{}, savemode: {}, tableExists:{}, createTable:{}, loadData:{}, truncate:{}",
-        database, table, mode, tableExists, createTable, loadData, truncateOption);
-    if (createTable) {
-      String createTableQuery = SchemaUtil.buildHiveCreateTableQueryFromSparkDFSchema(schema, database, table);
-      DefaultJDBCWrapper.executeUpdate(conn, database, createTableQuery, true);
-    }
+    LOG.info("Handling write: database:{}, table:{}, savemode: {}, tableExists:{}, createTable:{}, loadData:{}",
+        database, table, mode, tableExists, createTable, loadData);
 
     if (loadData) {
-      DefaultJDBCWrapper.executeUpdate(conn, database, loadInto(this.path.toString(), database, table), true);
+      // check for column names and order equivalence in case the table exists.
+      boolean validateAgainstHiveCols = tableExists && strictColumnNamesMapping;
+
+      LoadDataQueryBuilder builder = new LoadDataQueryBuilder(database, table, path.toString(), jobId,
+          sparkToHiveRecordMapper.getSchemaInHiveColumnsOrder())
+          .withOverwriteData(overwrite)
+          .withPartitionSpec(options.get(HWConf.PARTITION_OPTION_KEY))
+          .withCreateTableQuery(createTable)
+          .withStorageFormat("ORC")
+          .withValidateAgainstHiveColumns(validateAgainstHiveCols)
+          .withDescribeTableOutput(describeTableOutput)
+          ;
+      List<String> loadDataQueries = builder.build();
+
+      if (builder.isDynamicPartitionPresent()) {
+        DefaultJDBCWrapper.setSessionLevelProps(conn, "hive.exec.dynamic.partition=true",
+            "hive.exec.dynamic.partition.mode=nonstrict");
+      }
+      for (String query : loadDataQueries) {
+        LOG.info("Load data query: {}", query);
+        DefaultJDBCWrapper.executeUpdate(conn, database, query, true);
+      }
     }
   }
 

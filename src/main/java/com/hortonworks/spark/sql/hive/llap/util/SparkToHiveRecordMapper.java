@@ -75,7 +75,14 @@ public class SparkToHiveRecordMapper implements Serializable {
 
   /**
    * Builds mapping between sparkDF columns to hive columns and sets recordReorderingNeeded flag if
-   * all the column names of dataframe are present in hive table and their order is different
+   * all the column names of dataframe are present in hive table and their order is different.
+   *
+   * It does not set recordReorderingNeeded flag and does not perform any schema reordering if
+   * <br/>
+   *  - Hive columns and dataframe columns differ in length
+   * <br/>
+   *  - Or names of all the columns in DF are not similar to those in hive
+   *
    * <p>
    * <br/>
    * Eg: If mapping is [3,2,0,1], this implies that
