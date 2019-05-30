@@ -33,6 +33,7 @@ public class HiveWarehouseInputPartitionReader implements InputPartitionReader<C
   private long allocatorMax;
   private BufferAllocator allocator;
   private String attemptId;
+  private boolean inputExhausted = false;
 
   public HiveWarehouseInputPartitionReader(LlapInputSplit split, JobConf conf, long arrowAllocatorMax) throws Exception {
     //Set TASK_ATTEMPT_ID to submit to LlapOutputFormatService
@@ -65,7 +66,13 @@ public class HiveWarehouseInputPartitionReader implements InputPartitionReader<C
   }
 
   @Override public boolean next() throws IOException {
+    // don't call reader.next() if the input is already exhausted or else it will block.
+    // see https://hortonworks.jira.com/browse/BUG-120380 for more on it.
+    if (inputExhausted) {
+      return false;
+    }
     boolean hasNextBatch = reader.next(null, wrapperWritable);
+    inputExhausted = !hasNextBatch;
     return hasNextBatch;
   }
 
