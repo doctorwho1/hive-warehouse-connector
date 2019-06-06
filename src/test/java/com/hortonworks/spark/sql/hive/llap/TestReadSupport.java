@@ -74,6 +74,8 @@ public class TestReadSupport extends SessionTestBase {
 
     testResolveExecutionMethodForSmartExecution("SELECT * FROM source TABLESAMPLE(0.1 PERCENT) s", EXECUTE_QUERY_LLAP);
 
+    testResolveExecutionMethodForSmartExecution("select count(distinct cs_order_number) as `order count` from catalog_sales order by count(distinct cs_order_number) limit 100", EXECUTE_QUERY_LLAP);
+
   }
 
   private void testResolveExecutionMethodForSmartExecution(final String sql, final ExecutionMethod expectedWhenEnabled) {

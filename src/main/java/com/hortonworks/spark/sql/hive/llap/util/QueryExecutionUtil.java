@@ -1,5 +1,9 @@
 package com.hortonworks.spark.sql.hive.llap.util;
 
+import java.io.IOException;
+
+import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.hive.ql.Context;
 import org.apache.hadoop.hive.ql.parse.ASTNode;
 import org.apache.hadoop.hive.ql.parse.HiveParser;
 import org.apache.hadoop.hive.ql.parse.ParseException;
@@ -25,8 +29,12 @@ public final class QueryExecutionUtil {
     if (smartExecutionEnabled) {
       ASTNode tree;
       try {
-        tree = ParseUtils.parse(sql);
-      } catch (ParseException e) {
+        HiveConf conf = new HiveConf();
+        conf.set("_hive.hdfs.session.path", "/tmp/some_dummy_path");
+        conf.set("_hive.local.session.path", "/tmp/some_dummy_path");
+        Context ctx = new Context(conf);
+        tree = ParseUtils.parse(sql, ctx);
+      } catch (ParseException | IOException e) {
         throw new RuntimeException(e);
       }
       //select queries have token of type HiveParser.TOK_QUERY at top level in their parse tree.

@@ -79,6 +79,7 @@ class TestJavaProxy extends FunSuite {
     val test = new TestReadSupport()
     withSetUpAndTearDown(test, test.testReadSupport);
     withSetUpAndTearDown(test, test.testCountSupport);
+    withSetUpAndTearDown(test, test.testSmartExecutionCases);
   }
 
   test("SparkToHiveRecordMapperTest") {
