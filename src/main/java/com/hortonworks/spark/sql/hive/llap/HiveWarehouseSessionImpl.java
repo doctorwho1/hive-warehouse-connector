@@ -58,6 +58,7 @@ public class HiveWarehouseSessionImpl extends com.hortonworks.hwc.HiveWarehouseS
       DefaultJDBCWrapper.executeUpdate(conn, database, sql);
     executeUpdateWithPropagateException = DefaultJDBCWrapper::executeUpdate;
     sessionState.session.listenerManager().register(new LlapQueryExecutionListener());
+    session().sparkContext().addSparkListener(new HwcSparkListener());
   }
 
   public Dataset<Row> q(String sql) {
