@@ -42,7 +42,7 @@ public enum HWConf {
   LOAD_STAGING_DIR("load.staging.dir", warehouseKey("load.staging.dir"), "/tmp"),
   ARROW_ALLOCATOR_MAX("arrow.allocator.max", warehouseKey("arrow.allocator.max"), Long.MAX_VALUE),
   COUNT_TASKS("count.tasks", warehouseKey("count.tasks"), 100),
-  SMART_EXECUTION("smartExecution", warehouseKey("smartExecution"), "true"),
+  SMART_EXECUTION("smartExecution", warehouseKey("smartExecution"), "false"),
   ;
 
   private HWConf(String simpleKey, String qualifiedKey, Object defaultValue) {
