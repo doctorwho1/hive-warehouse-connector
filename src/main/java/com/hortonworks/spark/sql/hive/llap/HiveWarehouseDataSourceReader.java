@@ -1,13 +1,6 @@
 package com.hortonworks.spark.sql.hive.llap;
 
-import java.io.IOException;
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-
+import com.google.common.base.Preconditions;
 import com.hortonworks.spark.sql.hive.llap.util.JobUtil;
 import com.hortonworks.spark.sql.hive.llap.util.SchemaUtil;
 import org.apache.hadoop.hive.llap.LlapBaseInputFormat;
@@ -23,6 +16,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.Option;
 import scala.collection.Seq;
+
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 import static com.hortonworks.spark.sql.hive.llap.FilterPushdown.buildWhereClause;
 import static com.hortonworks.spark.sql.hive.llap.util.HiveQlUtil.*;
@@ -56,6 +57,8 @@ public class HiveWarehouseDataSourceReader
 
   private static Logger LOG = LoggerFactory.getLogger(HiveWarehouseDataSourceReader.class);
 
+  private final String sessionId;
+
   public HiveWarehouseDataSourceReader(Map<String, String> options) throws IOException {
     this.options = options;
 
@@ -66,6 +69,7 @@ public class HiveWarehouseDataSourceReader
     //More discussion: http://apache-spark-user-list.1001560.n3.nabble.com/DataSourceV2-APIs-creating-multiple-instances-of-DataSourceReader-and-hence-not-preserving-the-state-tc33646.html
     //Also a null check on schema is already there in readSchema() to prevent initialization more than once just in case.
     readSchema();
+    sessionId = getCurrentSessionId();
   }
 
   //if(schema is empty) -> df.count()
@@ -90,6 +94,13 @@ public class HiveWarehouseDataSourceReader
 
   private StatementType getQueryType() throws Exception {
     return StatementType.fromOptions(options);
+  }
+
+  private String getCurrentSessionId() {
+    String sessionId = options.get(HiveWarehouseSessionImpl.HWC_SESSION_ID_KEY);
+    Preconditions.checkNotNull(sessionId,
+        "session id cannot be null, forgot to initialize HiveWarehouseSession???");
+    return sessionId;
   }
 
   protected StructType getTableSchema() throws Exception {
@@ -183,6 +194,9 @@ public class HiveWarehouseDataSourceReader
     } catch (IOException e) {
       LOG.error("Unable to submit query to HS2");
       throw new RuntimeException(e);
+    } finally {
+      // add handle id for HiveWarehouseSessionImpl#close()
+      HiveWarehouseSessionImpl.addResourceIdToSession(sessionId, options.get(JobUtil.LLAP_HANDLE_ID));
     }
     return tasks;
   }
@@ -234,9 +248,8 @@ public class HiveWarehouseDataSourceReader
   }
 
   public void close() {
-    LOG.info("Closing resources for handleid: {}", options.get("handleid"));
     try {
-      LlapBaseInputFormat.close(options.get("handleid"));
+      HiveWarehouseSessionImpl.closeAndRemoveResourceFromSession(sessionId, options.get(JobUtil.LLAP_HANDLE_ID));
     } catch (IOException ioe) {
       throw new RuntimeException(ioe);
     }

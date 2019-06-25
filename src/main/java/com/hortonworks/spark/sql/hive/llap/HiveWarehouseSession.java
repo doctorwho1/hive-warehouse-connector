@@ -81,4 +81,9 @@ public interface HiveWarehouseSession {
     void dropTable(String table, boolean ifExists, boolean purge);
 
     void cleanUpStreamingMeta(String checkpointLocation, String queryId, String tableName);
+
+    /**
+     * Closes the HWC session. Session cannot be reused after being closed.
+     */
+    void close();
 }
