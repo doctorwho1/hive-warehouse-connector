@@ -39,6 +39,10 @@ public class HwcSparkListener extends SparkListener {
     LOG.info("Spark onApplicationEnd event triggered, closing all llap resources");
     // close any resource held by application.
     // these resources may be jdbc connections, locks on table etc
-    LlapBaseInputFormat.closeAll();
+    try {
+      LlapBaseInputFormat.closeAll();
+    } catch (Throwable e) {
+      LOG.warn("Unable to close LlapBaseInputFormat resources cleanly. This may or may not indicate errors.", e);
+    }
   }
 }
