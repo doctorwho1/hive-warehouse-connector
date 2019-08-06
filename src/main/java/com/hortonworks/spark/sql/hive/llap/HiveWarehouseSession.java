@@ -29,6 +29,16 @@ public interface HiveWarehouseSession {
     String HIVE_WAREHOUSE_POSTFIX = "hive.warehouse";
     String CONF_PREFIX = SPARK_DATASOURCES_PREFIX + "." + HIVE_WAREHOUSE_POSTFIX;
 
+    /**
+     *
+     * Calls {@link #execute(String)} (jdbc path) or
+     * {@link #executeQuery(String)} (llap path) based on the value of {@link HWConf#READ_VIA_LLAP}
+     *
+     * @param queryToFetchData query to fetch data
+     * @return Dataset<Row>
+     */
+    Dataset<Row> sql(String queryToFetchData);
+
     Dataset<Row> executeQuery(String sql);
 
     /**

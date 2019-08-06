@@ -108,6 +108,14 @@ public class HiveWarehouseSessionImpl extends com.hortonworks.hwc.HiveWarehouseS
     return executeQuery(sql);
   }
 
+  @Override
+  public Dataset<Row> sql(String queryToFetchData) {
+    if (BooleanUtils.toBoolean(HWConf.READ_VIA_LLAP.getString(sessionState))) {
+      return executeQueryInternal(queryToFetchData, null);
+    }
+    return executeInternal(queryToFetchData);
+  }
+
   public Dataset<Row> executeQuery(String sql) {
     return executeSmart(EXECUTE_QUERY_LLAP, sql, null);
   }

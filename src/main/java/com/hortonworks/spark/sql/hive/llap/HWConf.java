@@ -46,6 +46,7 @@ public enum HWConf {
   //on batch write path, setting this ensures that dataframe has columns congruent to hive table
   WRITE_PATH_STRICT_COLUMN_NAMES_MAPPING("write.path.strictColumnNamesMapping",
       warehouseKey("write.path.strictColumnNamesMapping"), "true"),
+  READ_VIA_LLAP("read.via.llap", warehouseKey("read.via.llap"), "false"),
   ;
 
   private HWConf(String simpleKey, String qualifiedKey, Object defaultValue) {

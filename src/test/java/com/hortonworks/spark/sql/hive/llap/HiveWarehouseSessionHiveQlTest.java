@@ -59,6 +59,18 @@ class HiveWarehouseSessionHiveQlTest extends SessionTestBase {
     }
 
     @Test
+    void testSql() {
+        final String query = "SELECT * FROM t1";
+        // test with default i.e. READ_VIA_LLAP = false
+        assertEquals(hive.sql(query).count(), mockExecuteResultSize);
+
+        // test with READ_VIA_LLAP = true
+        session.conf().set(HWConf.READ_VIA_LLAP.getQualifiedKey(), true);
+        assertEquals(hive.sql(query).count(),
+            SimpleMockConnector.SimpleMockDataReader.RESULT_SIZE);
+    }
+
+    @Test
     void testUnqualifiedTable() {
         assertEquals(hive.table("t1").count(),
             SimpleMockConnector.SimpleMockDataReader.RESULT_SIZE);
