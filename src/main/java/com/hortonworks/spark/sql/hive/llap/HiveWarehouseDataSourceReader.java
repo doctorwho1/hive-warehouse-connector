@@ -2,6 +2,7 @@ package com.hortonworks.spark.sql.hive.llap;
 
 import com.google.common.base.Preconditions;
 import com.hortonworks.spark.sql.hive.llap.util.JobUtil;
+import com.hortonworks.spark.sql.hive.llap.util.QueryExecutionUtil;
 import com.hortonworks.spark.sql.hive.llap.util.SchemaUtil;
 import org.apache.hadoop.hive.llap.LlapBaseInputFormat;
 import org.apache.hadoop.hive.llap.LlapInputSplit;
@@ -14,7 +15,6 @@ import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.vectorized.ColumnarBatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import scala.Option;
 import scala.collection.Seq;
 
 import java.io.IOException;
@@ -231,10 +231,7 @@ public class HiveWarehouseDataSourceReader
   }
 
   private Connection getConnection() {
-    String url = HWConf.RESOLVED_HS2_URL.getFromOptionsMap(options);
-    String user = HWConf.USER.getFromOptionsMap(options);
-    String dbcp2Configs = HWConf.DBCP2_CONF.getFromOptionsMap(options);
-    return DefaultJDBCWrapper.getConnector(Option.empty(), url, user, dbcp2Configs);
+    return QueryExecutionUtil.getConnection(options);
   }
 
   private long getArrowAllocatorMax () {

@@ -33,9 +33,9 @@ public class JobUtil {
     if (options.containsKey("default.db")) {
       jobConf.set("llap.if.database", HWConf.DEFAULT_DB.getFromOptionsMap(options));
     }
-    if (!options.containsKey("handleid")) {
+    if (!options.containsKey(LLAP_HANDLE_ID)) {
       String handleId = UUID.randomUUID().toString();
-      options.put("handleid", handleId);
+      options.put(LLAP_HANDLE_ID, handleId);
     }
     jobConf.set("llap.if.handleid", options.get(LLAP_HANDLE_ID));
 

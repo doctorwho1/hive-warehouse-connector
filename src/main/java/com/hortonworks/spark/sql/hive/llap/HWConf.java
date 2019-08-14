@@ -38,7 +38,7 @@ public enum HWConf {
   RESOLVED_HS2_URL("hs2.url.resolved", warehouseKey("hs2.url.resolved"), ""),
   DBCP2_CONF("dbcp2.conf", warehouseKey("dbcp2.conf"), null),
   DEFAULT_DB("default.db", warehouseKey("default.db"), "default"),
-  MAX_EXEC_RESULTS("exec.results.max", warehouseKey("exec.results.max"), 1000),
+  MAX_EXEC_RESULTS("exec.results.max", warehouseKey("exec.results.max"), 0),
   LOAD_STAGING_DIR("load.staging.dir", warehouseKey("load.staging.dir"), "/tmp"),
   ARROW_ALLOCATOR_MAX("arrow.allocator.max", warehouseKey("arrow.allocator.max"), Long.MAX_VALUE),
   COUNT_TASKS("count.tasks", warehouseKey("count.tasks"), 100),

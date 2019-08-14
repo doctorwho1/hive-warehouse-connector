@@ -16,6 +16,8 @@ import org.apache.spark.sql.types.StructType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.hortonworks.spark.sql.hive.llap.util.QueryExecutionUtil.ExecutionMethod.EXECUTE_QUERY_LLAP;
+
 /*
  * Driver:
  *   UserCode -> HiveWarehouseConnector -> HiveWarehouseDataSourceReader -> HiveWarehouseInputPartition
@@ -57,7 +59,11 @@ public class HiveWarehouseConnector implements DataSourceV2, ReadSupport, Sessio
   }
 
   protected DataSourceReader getDataSourceReader(Map<String, String> params) throws IOException {
-    return new HiveWarehouseDataSourceReader(params);
+    if (params.get(HiveWarehouseSessionImpl.HWC_QUERY_MODE).equals(EXECUTE_QUERY_LLAP.name())) {
+      return new HiveWarehouseDataSourceReader(params);
+    } else {
+      return new JdbcDataSourceReader(params);
+    }
   }
 
   protected DataSourceWriter getDataSourceWriter(String jobId, StructType schema,

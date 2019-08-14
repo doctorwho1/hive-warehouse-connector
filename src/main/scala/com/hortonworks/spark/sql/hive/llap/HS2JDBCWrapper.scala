@@ -515,10 +515,10 @@ class JDBCWrapper {
       case java.sql.Types.TIMESTAMP     => TimestampType
       case java.sql.Types.BINARY        => BinaryType
       case java.sql.Types.DECIMAL       => DecimalType(precision, scale)
-      case java.sql.Types.ARRAY         => getCatalystType(typeName)
-      case java.sql.Types.STRUCT        => getCatalystType(typeName)
+      case java.sql.Types.ARRAY         => StringType
+      case java.sql.Types.STRUCT        => StringType
       case java.sql.Types.JAVA_OBJECT
-        if (typeName.toLowerCase().startsWith("map")) => getCatalystType(typeName)
+        if (typeName.toLowerCase().startsWith("map")) => StringType
       case _                            => null
       // scalastyle:on
     }

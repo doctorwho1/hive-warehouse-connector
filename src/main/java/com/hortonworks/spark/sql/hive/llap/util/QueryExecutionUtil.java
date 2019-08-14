@@ -1,13 +1,19 @@
 package com.hortonworks.spark.sql.hive.llap.util;
 
 import java.io.IOException;
+import java.sql.Connection;
+import java.util.Map;
 
+import com.hortonworks.spark.sql.hive.llap.DefaultJDBCWrapper;
+import com.hortonworks.spark.sql.hive.llap.HWConf;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.Context;
 import org.apache.hadoop.hive.ql.parse.ASTNode;
 import org.apache.hadoop.hive.ql.parse.HiveParser;
 import org.apache.hadoop.hive.ql.parse.ParseException;
 import org.apache.hadoop.hive.ql.parse.ParseUtils;
+import scala.Option;
+
 import static com.hortonworks.spark.sql.hive.llap.util.QueryExecutionUtil.ExecutionMethod.EXECUTE_HIVE_JDBC;
 import static com.hortonworks.spark.sql.hive.llap.util.QueryExecutionUtil.ExecutionMethod.EXECUTE_QUERY_LLAP;
 
@@ -46,6 +52,13 @@ public final class QueryExecutionUtil {
       }
     }
     return resolved;
+  }
+
+  public static Connection getConnection(Map<String, String> options) {
+    String url = HWConf.RESOLVED_HS2_URL.getFromOptionsMap(options);
+    String user = HWConf.USER.getFromOptionsMap(options);
+    String dbcp2Configs = HWConf.DBCP2_CONF.getFromOptionsMap(options);
+    return DefaultJDBCWrapper.getConnector(Option.empty(), url, user, dbcp2Configs);
   }
 
 }

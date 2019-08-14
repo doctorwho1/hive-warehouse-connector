@@ -68,7 +68,7 @@ public interface HiveWarehouseSession {
 
     boolean executeUpdate(String sql, boolean propagateException);
 
-    Dataset<Row> table(String sql);
+    Dataset<Row> table(String table);
 
     SparkSession session();
 
