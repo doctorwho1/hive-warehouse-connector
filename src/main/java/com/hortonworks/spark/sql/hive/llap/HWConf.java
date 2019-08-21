@@ -47,6 +47,7 @@ public enum HWConf {
   WRITE_PATH_STRICT_COLUMN_NAMES_MAPPING("write.path.strictColumnNamesMapping",
       warehouseKey("write.path.strictColumnNamesMapping"), "true"),
   READ_VIA_LLAP("read.via.llap", warehouseKey("read.via.llap"), "false"),
+  READ_JDBC_MODE("read.jdbc.mode", warehouseKey("read.jdbc.mode"), "client"),
   ;
 
   private HWConf(String simpleKey, String qualifiedKey, Object defaultValue) {

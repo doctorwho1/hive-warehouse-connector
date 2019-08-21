@@ -45,6 +45,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 
 import static com.hortonworks.spark.sql.hive.llap.HWConf.DEFAULT_DB;
 import static com.hortonworks.spark.sql.hive.llap.util.QueryExecutionUtil.ExecutionMethod.EXECUTE_HIVE_JDBC;
@@ -55,6 +56,8 @@ public class HiveWarehouseSessionImpl extends com.hortonworks.hwc.HiveWarehouseS
 
   private static final Logger LOG = LoggerFactory.getLogger(HiveWarehouseSessionImpl.class);
 
+  private static final String SELECT_STMT_REGEX = "(\\s+)?select(\\s+).+";
+  private static final Pattern selectPattern = Pattern.compile(SELECT_STMT_REGEX, Pattern.CASE_INSENSITIVE);
   public static final String SESSION_CLOSED_MSG = "Session is closed!!! No more operations can be performed. Please create a new HiveWarehouseSession";
   public static final String HWC_SESSION_ID_KEY = "hwc_session_id";
   public static final String HWC_QUERY_MODE = "hwc_query_mode";
@@ -113,7 +116,11 @@ public class HiveWarehouseSessionImpl extends com.hortonworks.hwc.HiveWarehouseS
     if (BooleanUtils.toBoolean(HWConf.READ_VIA_LLAP.getString(sessionState))) {
       return executeQueryInternal(queryToFetchData, null);
     }
-    return executeInternal(queryToFetchData);
+    if (HWConf.READ_JDBC_MODE.getString(sessionState).equalsIgnoreCase("client")) {
+      return executeSimpleJdbc(queryToFetchData);
+    } else {
+      return executeJdbcInternal(queryToFetchData);
+    }
   }
 
   public Dataset<Row> executeQuery(String sql) {
@@ -129,14 +136,19 @@ public class HiveWarehouseSessionImpl extends com.hortonworks.hwc.HiveWarehouseS
   }
 
   private Dataset<Row> executeQueryInternal(String sql, Integer numSplitsToDemand) {
-    ensureSessionOpen();
-    String mode = EXECUTE_QUERY_LLAP.name();
-    DataFrameReader dfr = session().read().format(HIVE_WAREHOUSE_CONNECTOR_INTERNAL).option("query", sql)
-        .option(HWC_SESSION_ID_KEY, sessionId).option(HWC_QUERY_MODE, mode);
-    if (numSplitsToDemand != null) {
-      dfr.option(JobUtil.SESSION_QUERIES_FOR_GET_NUM_SPLITS, setSplitPropertiesQuery(numSplitsToDemand));
+    // If query is select query, then used HiveWarehouseDataSource or else use Simple JDBC in case of DDL operations.
+    if ((sql != null) && selectPattern.matcher(sql).matches()) {
+      ensureSessionOpen();
+      String mode = EXECUTE_QUERY_LLAP.name();
+      DataFrameReader dfr = session().read().format(HIVE_WAREHOUSE_CONNECTOR_INTERNAL).option("query", sql)
+              .option(HWC_SESSION_ID_KEY, sessionId).option(HWC_QUERY_MODE, mode);
+      if (numSplitsToDemand != null) {
+        dfr.option(JobUtil.SESSION_QUERIES_FOR_GET_NUM_SPLITS, setSplitPropertiesQuery(numSplitsToDemand));
+      }
+      return dfr.load();
+    } else {
+      return executeSimpleJdbc(sql);
     }
-    return dfr.load();
   }
 
   static void addResourceIdToSession(String sessionId, String resourceId) {
@@ -195,17 +207,22 @@ public class HiveWarehouseSessionImpl extends com.hortonworks.hwc.HiveWarehouseS
     ExecutionMethod resolved = resolveExecutionMethod(
         BooleanUtils.toBoolean(HWConf.SMART_EXECUTION.getString(sessionState)), current, sql);
     if (EXECUTE_HIVE_JDBC.equals(resolved)) {
-      return executeInternal(sql);
+      return executeSimpleJdbc(sql);
     }
     return executeQueryInternal(sql, numSplitsToDemand);
   }
 
-  private Dataset<Row> executeInternal(String sql) {
-    ensureSessionOpen();
-    String mode = EXECUTE_HIVE_JDBC.name();
-    DataFrameReader dfr = session().read().format(HIVE_WAREHOUSE_CONNECTOR_INTERNAL).option("query", sql)
-            .option(HWC_SESSION_ID_KEY, sessionId).option(HWC_QUERY_MODE, mode);
-    return dfr.load();
+  private Dataset<Row> executeJdbcInternal(String sql) {
+    // If query is select query, then used JDBCDataSource or else use Simple JDBC in case of DDL operations.
+    if ((sql != null) && selectPattern.matcher(sql).matches()) {
+      ensureSessionOpen();
+      String mode = EXECUTE_HIVE_JDBC.name();
+      DataFrameReader dfr = session().read().format(HIVE_WAREHOUSE_CONNECTOR_INTERNAL).option("query", sql)
+              .option(HWC_SESSION_ID_KEY, sessionId).option(HWC_QUERY_MODE, mode);
+      return dfr.load();
+    } else {
+      return executeSimpleJdbc(sql);
+    }
   }
 
   public boolean executeUpdate(String sql) {
@@ -258,7 +275,7 @@ public class HiveWarehouseSessionImpl extends com.hortonworks.hwc.HiveWarehouseS
     HWConf.DEFAULT_DB.setString(sessionState, name);
   }
 
-  private Dataset<Row> executeDDL(String sql) {
+  private Dataset<Row> executeSimpleJdbc(String sql) {
     ensureSessionOpen();
     try (Connection conn = getConnector.get()) {
       DriverResultSet drs = executeStmt.apply(conn, DEFAULT_DB.getString(sessionState), sql);
@@ -270,17 +287,17 @@ public class HiveWarehouseSessionImpl extends com.hortonworks.hwc.HiveWarehouseS
 
   public Dataset<Row> showDatabases() {
     ensureSessionOpen();
-    return executeDDL(HiveQlUtil.showDatabases());
+    return executeSimpleJdbc(HiveQlUtil.showDatabases());
   }
 
   public Dataset<Row> showTables() {
     ensureSessionOpen();
-    return executeDDL(HiveQlUtil.showTables(DEFAULT_DB.getString(sessionState)));
+    return executeSimpleJdbc(HiveQlUtil.showTables(DEFAULT_DB.getString(sessionState)));
   }
 
   public Dataset<Row> describeTable(String table) {
     ensureSessionOpen();
-    return executeDDL(HiveQlUtil.describeTable(DEFAULT_DB.getString(sessionState), table));
+    return executeSimpleJdbc(HiveQlUtil.describeTable(DEFAULT_DB.getString(sessionState), table));
   }
 
   public void dropDatabase(String database, boolean ifExists, boolean cascade) {
