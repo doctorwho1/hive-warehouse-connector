@@ -95,6 +95,11 @@ class HiveWarehouseSessionImpl(object):
         self._spark_session = spark_session
         self._jhwsession = jhwsession
 
+    def sql(self, sql):
+        assert isinstance(sql, basestring), "sql should be a string"
+
+        return DataFrame(self._jhwsession.sql(sql), self._spark_session._wrapped)
+
     def executeQuery(self, sql):
         assert isinstance(sql, basestring), "sql should be a string"
 
