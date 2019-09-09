@@ -220,7 +220,7 @@ public class HiveWarehouseDataSourceReader
   }
 
   protected long getCount(String query) {
-    try(Connection conn = getConnection()) {
+    try (Connection conn = QueryExecutionUtil.getConnection(options)) {
       DriverResultSet rs = DefaultJDBCWrapper.executeStmt(conn, HWConf.DEFAULT_DB.getFromOptionsMap(options), query,
           Long.parseLong(HWConf.MAX_EXEC_RESULTS.getFromOptionsMap(options)));
       return rs.getData().get(0).getLong(0);
@@ -228,10 +228,6 @@ public class HiveWarehouseDataSourceReader
       LOG.error("Failed to connect to HS2", e);
       throw new RuntimeException(e);
     }
-  }
-
-  private Connection getConnection() {
-    return QueryExecutionUtil.getConnection(options);
   }
 
   private long getArrowAllocatorMax () {

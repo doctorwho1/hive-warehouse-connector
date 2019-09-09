@@ -22,6 +22,7 @@ import com.hortonworks.hwc.MergeBuilder;
 import com.hortonworks.spark.sql.hive.llap.util.FunctionWith4Args;
 import com.hortonworks.spark.sql.hive.llap.util.HiveQlUtil;
 import com.hortonworks.spark.sql.hive.llap.util.JobUtil;
+import com.hortonworks.spark.sql.hive.llap.util.QueryExecutionUtil;
 import com.hortonworks.spark.sql.hive.llap.util.QueryExecutionUtil.ExecutionMethod;
 import com.hortonworks.spark.sql.hive.llap.util.StreamingMetaCleaner;
 import com.hortonworks.spark.sql.hive.llap.util.TriFunction;
@@ -31,6 +32,7 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.sql.DataFrameReader;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
+import org.apache.spark.sql.RuntimeConfig;
 import org.apache.spark.sql.SparkSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,6 +53,7 @@ import static com.hortonworks.spark.sql.hive.llap.HWConf.DEFAULT_DB;
 import static com.hortonworks.spark.sql.hive.llap.util.QueryExecutionUtil.ExecutionMethod.EXECUTE_HIVE_JDBC;
 import static com.hortonworks.spark.sql.hive.llap.util.QueryExecutionUtil.ExecutionMethod.EXECUTE_QUERY_LLAP;
 import static com.hortonworks.spark.sql.hive.llap.util.QueryExecutionUtil.resolveExecutionMethod;
+import static java.lang.String.format;
 
 public class HiveWarehouseSessionImpl extends com.hortonworks.hwc.HiveWarehouseSession {
 
@@ -212,13 +215,30 @@ public class HiveWarehouseSessionImpl extends com.hortonworks.hwc.HiveWarehouseS
     return executeQueryInternal(sql, numSplitsToDemand);
   }
 
+  private String getJdbcUrlForExecutor() {
+    RuntimeConfig conf = session().conf();
+    if ((conf.contains(HWConf.HIVESERVER2_CREDENTIAL_ENABLED) && conf.get(HWConf.HIVESERVER2_CREDENTIAL_ENABLED).equals("true"))
+            || conf.contains(HWConf.HIVESERVER2_JDBC_URL_PRINCIPAL)) {
+      String master = conf.get(HWConf.SPARK_MASTER, "local");
+      LOG.debug("Getting jdbc connection url for kerberized cluster with spark.master = {}", master);
+      if (master.equals("yarn")) {
+        // In YARN mode for kerberized clusters, executors always run on yarn application. So, need
+        // to use delegationToken to authenticate HS2 connection from it.
+        return format("%s;auth=delegationToken", conf.get(HWConf.HIVESERVER2_JDBC_URL));
+      }
+    }
+    return HWConf.RESOLVED_HS2_URL.getString(sessionState);
+  }
+
   private Dataset<Row> executeJdbcInternal(String sql) {
     // If query is select query, then used JDBCDataSource or else use Simple JDBC in case of DDL operations.
     if ((sql != null) && selectPattern.matcher(sql).matches()) {
       ensureSessionOpen();
       String mode = EXECUTE_HIVE_JDBC.name();
       DataFrameReader dfr = session().read().format(HIVE_WAREHOUSE_CONNECTOR_INTERNAL).option("query", sql)
-              .option(HWC_SESSION_ID_KEY, sessionId).option(HWC_QUERY_MODE, mode);
+              .option(HWC_SESSION_ID_KEY, sessionId)
+              .option(HWC_QUERY_MODE, mode)
+              .option(QueryExecutionUtil.HIVE_JDBC_URL_FOR_EXECUTOR, getJdbcUrlForExecutor());
       return dfr.load();
     } else {
       return executeSimpleJdbc(sql);

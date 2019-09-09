@@ -66,6 +66,7 @@ public enum HWConf {
   public static final String HIVESERVER2_JDBC_URL = "spark.sql.hive.hiveserver2.jdbc.url";
   //possible values - client/cluster. default - client
   public static final String SPARK_SUBMIT_DEPLOYMODE = "spark.submit.deployMode";
+  public static final String SPARK_MASTER = "spark.master";
   public static final String PARTITION_OPTION_KEY = "partition";
 
   public String getQualifiedKey() {

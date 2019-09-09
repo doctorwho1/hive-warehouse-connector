@@ -24,6 +24,7 @@ import java.util.Map;
 import com.hortonworks.spark.sql.hive.llap.common.Column;
 import com.hortonworks.spark.sql.hive.llap.common.DescribeTableOutput;
 import com.hortonworks.spark.sql.hive.llap.query.builder.LoadDataQueryBuilder;
+import com.hortonworks.spark.sql.hive.llap.util.QueryExecutionUtil;
 import com.hortonworks.spark.sql.hive.llap.util.SchemaUtil;
 import com.hortonworks.spark.sql.hive.llap.util.SerializableHadoopConfiguration;
 import com.hortonworks.spark.sql.hive.llap.util.SparkToHiveRecordMapper;
@@ -138,15 +139,12 @@ public class HiveWarehouseDataSourceWriter implements DataSourceWriter {
 
   @Override public void commit(WriterCommitMessage[] messages) {
     try {
-      String url = HWConf.RESOLVED_HS2_URL.getFromOptionsMap(options);
-      String user = HWConf.USER.getFromOptionsMap(options);
-      String dbcp2Configs = HWConf.DBCP2_CONF.getFromOptionsMap(options);
       String database = HWConf.DEFAULT_DB.getFromOptionsMap(options);
       String table = options.get("table");
       SchemaUtil.TableRef tableRef = SchemaUtil.getDbTableNames(database, table);
       database = tableRef.databaseName;
       table = tableRef.tableName;
-      try (Connection conn = DefaultJDBCWrapper.getConnector(Option.empty(), url, user, dbcp2Configs)) {
+      try (Connection conn =  getConnection()) {
         handleWriteWithSaveMode(database, table, conn);
       } catch (java.sql.SQLException e) {
         throw new RuntimeException(e);
@@ -223,10 +221,7 @@ public class HiveWarehouseDataSourceWriter implements DataSourceWriter {
   }
 
   private Connection getConnection() {
-    String url = HWConf.RESOLVED_HS2_URL.getFromOptionsMap(options);
-    String user = HWConf.USER.getFromOptionsMap(options);
-    String dbcp2Configs = HWConf.DBCP2_CONF.getFromOptionsMap(options);
-    return DefaultJDBCWrapper.getConnector(Option.empty(), url, user, dbcp2Configs);
+    return QueryExecutionUtil.getConnection(options);
   }
 
   @Override public void abort(WriterCommitMessage[] messages) {

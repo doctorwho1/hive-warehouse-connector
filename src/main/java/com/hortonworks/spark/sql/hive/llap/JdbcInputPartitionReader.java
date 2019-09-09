@@ -30,16 +30,35 @@ public class JdbcInputPartitionReader implements InputPartitionReader<InternalRo
   JdbcInputPartitionReader(String query, Map<String, String> options) throws Exception {
     this.query = query;
 
-    this.conn = QueryExecutionUtil.getConnection(options);
+    this.conn = getConnection(options);
     this.stmt = conn.prepareStatement(query);
     int maxRows = Integer.parseInt(HWConf.MAX_EXEC_RESULTS.getFromOptionsMap(options));
     stmt.setMaxRows(maxRows);
 
+    // Since the query might run in remote spark executor app, we need to set database before running
+    // actual query.
+    String dbName = HWConf.DEFAULT_DB.getFromOptionsMap(options);
+    useDatabase(conn, dbName);
     this.resultSet = stmt.executeQuery();
     this.numCols = resultSet.getMetaData().getColumnCount();
     this.rowData = new Object[numCols];
 
     LOG.info("Execution via JDBC connection for query: " + query);
+  }
+
+  private Connection getConnection(Map<String, String> options) {
+    String url = options.get(QueryExecutionUtil.HIVE_JDBC_URL_FOR_EXECUTOR);
+    String user = HWConf.USER.getFromOptionsMap(options);
+    String dbcp2Configs = HWConf.DBCP2_CONF.getFromOptionsMap(options);
+    return QueryExecutionUtil.getConnection(url, user, dbcp2Configs);
+  }
+
+  private void useDatabase(Connection conn, String dbName) throws SQLException {
+    if (dbName != null) {
+      PreparedStatement stmt = conn.prepareStatement("USE " + dbName);
+      stmt.execute();
+      stmt.close();
+    }
   }
 
   private Object normalizeColValue(Object colValue) {

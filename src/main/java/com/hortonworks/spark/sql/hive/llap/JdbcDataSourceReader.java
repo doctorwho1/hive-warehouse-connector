@@ -102,16 +102,12 @@ public class JdbcDataSourceReader
     }
 
     // We need to obtain the result schema for the given query.
-    try (Connection conn = getConnection()) {
+    try (Connection conn = QueryExecutionUtil.getConnection(options)) {
       return DefaultJDBCWrapper.resolveQuery(conn, HWConf.DEFAULT_DB.getFromOptionsMap(options), query);
     } catch (SQLException e) {
       LOG.error("Failed to connect to HS2", e);
       throw new RuntimeException(e);
     }
-  }
-
-  private Connection getConnection() {
-    return QueryExecutionUtil.getConnection(options);
   }
 
   @Override

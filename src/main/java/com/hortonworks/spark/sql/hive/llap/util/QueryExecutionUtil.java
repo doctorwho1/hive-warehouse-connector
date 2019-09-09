@@ -19,6 +19,8 @@ import static com.hortonworks.spark.sql.hive.llap.util.QueryExecutionUtil.Execut
 
 public final class QueryExecutionUtil {
 
+  public final static String HIVE_JDBC_URL_FOR_EXECUTOR = "hs2.jdbc.url.for.executor";
+
   public enum ExecutionMethod {
     EXECUTE_HIVE_JDBC, EXECUTE_QUERY_LLAP
   }
@@ -58,6 +60,10 @@ public final class QueryExecutionUtil {
     String url = HWConf.RESOLVED_HS2_URL.getFromOptionsMap(options);
     String user = HWConf.USER.getFromOptionsMap(options);
     String dbcp2Configs = HWConf.DBCP2_CONF.getFromOptionsMap(options);
+    return DefaultJDBCWrapper.getConnector(Option.empty(), url, user, dbcp2Configs);
+  }
+
+  public static Connection getConnection(String url, String user, String dbcp2Configs) {
     return DefaultJDBCWrapper.getConnector(Option.empty(), url, user, dbcp2Configs);
   }
 
