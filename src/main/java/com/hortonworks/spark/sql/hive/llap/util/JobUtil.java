@@ -33,11 +33,15 @@ public class JobUtil {
     if (options.containsKey("default.db")) {
       jobConf.set("llap.if.database", HWConf.DEFAULT_DB.getFromOptionsMap(options));
     }
-    if (!options.containsKey(LLAP_HANDLE_ID)) {
-      String handleId = UUID.randomUUID().toString();
-      options.put(LLAP_HANDLE_ID, handleId);
-    }
+
+    // Always create a new Hive connection for a data frame or rdd operation. This would help if any of the operation
+    // re-uses the Data source reader factory that might be referring to Hive session specific scratch directory.
+    // Need to pass new handleId for each operation to ensure allocation of new session and also make sure none of
+    // the operation closes a connection opened by another rdd/df operation.
+    String handleId = UUID.randomUUID().toString();
+    options.put(LLAP_HANDLE_ID, handleId);
     jobConf.set("llap.if.handleid", options.get(LLAP_HANDLE_ID));
+    LOG.info("Assigned handle ID:" + handleId + " for the current operation.");
 
     if (options.containsKey(SESSION_QUERIES_FOR_GET_NUM_SPLITS)) {
       jobConf.set(SESSION_QUERIES_FOR_GET_NUM_SPLITS, options.get(SESSION_QUERIES_FOR_GET_NUM_SPLITS));

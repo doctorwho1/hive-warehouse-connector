@@ -31,10 +31,10 @@ class LlapQueryExecutionListener extends QueryExecutionListener with Logging {
     queryExecution.sparkPlan.foreach {
       case r: RowDataSourceScanExec if r.relation.isInstanceOf[LlapRelation] =>
         r.relation.asInstanceOf[LlapRelation].close()
-        logDebug(s"Closing Hive connection via ${classOf[LlapRelation].getName}")
+        logInfo(s"Closing Hive connection via ${classOf[LlapRelation].getName}")
       case s: DataSourceV2ScanExec if s.reader.isInstanceOf[HiveWarehouseDataSourceReader] =>
         s.reader.asInstanceOf[HiveWarehouseDataSourceReader].close()
-        logDebug(s"Closing Hive connection via ${classOf[HiveWarehouseDataSourceReader].getName}")
+        logInfo(s"Closing Hive connection via ${classOf[HiveWarehouseDataSourceReader].getName}")
       case _ =>
     }
   }

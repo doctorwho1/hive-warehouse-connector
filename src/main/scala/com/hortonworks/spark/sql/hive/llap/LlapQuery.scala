@@ -50,6 +50,7 @@ class LlapQuery(val sc: SQLContext) {
   def close(): Unit = {
     handleIds.foreach ((handleId) => {
       try {
+        log.info("Closing handleid " + handleId)
         LlapBaseInputFormat.close(handleId)
       } catch {
         case ex: Exception =>
