@@ -17,6 +17,7 @@ val hiveVersion = sys.props.getOrElse("hive.version", "3.1.0-SNAPSHOT")
 val log4j2Version = sys.props.getOrElse("log4j2.version", "2.4.1")
 val tezVersion = sys.props.getOrElse("tez.version", "0.9.1")
 val thriftVersion = sys.props.getOrElse("thrift.version", "0.9.3")
+val gbnUrl = sys.props.getOrElse("gbnurl", "https://repo1.maven.org/maven2/")
 val repoUrl = sys.props.getOrElse("repourl", "https://repo1.maven.org/maven2/")
 
 spName := "hortonworks/hive-warehouse-connector"
@@ -369,6 +370,7 @@ packageOptions in assembly +=
   Package.ManifestAttributes("Spark-HasRPackage" -> "true")
 
 resolvers += "Local Maven Repository" at "file://"+Path.userHome.absolutePath+"/.m2/repository"
+resolvers += "GBN Maven Repository" at gbnUrl
 resolvers += "Additional Maven Repository" at repoUrl
 resolvers += "Hortonworks Maven Repository" at "http://repo.hortonworks.com/content/groups/public/"
 
