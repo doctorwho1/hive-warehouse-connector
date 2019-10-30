@@ -18,6 +18,7 @@
 package com.hortonworks.spark.sql.hive.llap.common;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * DescribeTableOutput - To hold output of desc formatted <table> command
@@ -26,6 +27,8 @@ public class DescribeTableOutput {
 
   private List<Column> columns;
   private List<Column> partitionedColumns;
+  private List<Column> detailedTableInfo;
+  private List<Column> storageInfo;
 
   //Add more as needed
 
@@ -43,5 +46,48 @@ public class DescribeTableOutput {
 
   public void setPartitionedColumns(List<Column> partitionedColumns) {
     this.partitionedColumns = partitionedColumns;
+  }
+
+  public List<Column> getDetailedTableInfo() {
+    return detailedTableInfo;
+  }
+
+  public void setDetailedTableInfo(List<Column> detailedTableInfo) {
+    this.detailedTableInfo = detailedTableInfo;
+  }
+
+  public List<Column> getStorageInfo() {
+    return storageInfo;
+  }
+
+  public void setStorageInfo(List<Column> storageInfo) {
+    this.storageInfo = storageInfo;
+  }
+
+  public Column findByColNameInStorageInfo(String columnName, boolean errorOnUnsuccessfulSearch) {
+    return findByColName(storageInfo, columnName, errorOnUnsuccessfulSearch);
+  }
+
+  private Column findByColName(List<Column> columns, String columnName, boolean errorOnUnsuccessfulSearch) {
+    Optional<Column> column = columns.stream().filter(col -> col.getName().equalsIgnoreCase(columnName)).findFirst();
+    if (column.isPresent()) {
+      return column.get();
+    } else {
+      if (errorOnUnsuccessfulSearch) {
+        throw new IllegalArgumentException("Column with name: "
+            + columnName + " cannot be found in describe table output");
+      }
+    }
+    return null;
+  }
+
+  @Override
+  public String toString() {
+    return "DescribeTableOutput{" +
+        "columns=" + columns +
+        ", partitionedColumns=" + partitionedColumns +
+        ", detailedTableInfo=" + detailedTableInfo +
+        ", storageInfo=" + storageInfo +
+        '}';
   }
 }

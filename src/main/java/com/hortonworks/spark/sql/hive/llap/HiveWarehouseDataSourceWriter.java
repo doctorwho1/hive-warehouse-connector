@@ -21,6 +21,7 @@ import java.sql.Connection;
 import java.util.List;
 import java.util.Map;
 
+import com.google.common.base.Preconditions;
 import com.hortonworks.spark.sql.hive.llap.common.Column;
 import com.hortonworks.spark.sql.hive.llap.common.DescribeTableOutput;
 import com.hortonworks.spark.sql.hive.llap.query.builder.LoadDataQueryBuilder;
@@ -67,6 +68,10 @@ import static com.hortonworks.spark.sql.hive.llap.util.HiveQlUtil.loadInto;
  * 2.3) Order of columns in dataframe is different to that of in hive table.
  */
 public class HiveWarehouseDataSourceWriter implements SupportsWriteInternalRow {
+
+  private static final String SER_DE_LIBRARY = "SerDe Library:";
+  private static final String ORC_SERDE = "OrcSerde";
+
   protected String jobId;
   protected StructType schema;
   private SaveMode mode;
@@ -113,6 +118,7 @@ public class HiveWarehouseDataSourceWriter implements SupportsWriteInternalRow {
       this.tableExists = DefaultJDBCWrapper.tableExists(connection, databaseName, tableName);
       if (this.tableExists) {
         this.describeTableOutput = DefaultJDBCWrapper.describeTable(connection, databaseName, tableName);
+        validateTableIsOrcFormatted();
         hiveCols = new String[describeTableOutput.getColumns().size() + describeTableOutput.getPartitionedColumns().size()];
         int i = 0;
         for (Column column : describeTableOutput.getColumns()) {
@@ -127,6 +133,12 @@ public class HiveWarehouseDataSourceWriter implements SupportsWriteInternalRow {
     }
     this.sparkToHiveRecordMapper = new SparkToHiveRecordMapper(schema, hiveCols);
     return new HiveWarehouseDataWriterFactory(jobId, schema, path, new SerializableHadoopConfiguration(conf), sparkToHiveRecordMapper);
+  }
+
+  private void validateTableIsOrcFormatted() {
+    String serdeLib = describeTableOutput.findByColNameInStorageInfo(SER_DE_LIBRARY, true).getDataType();
+    Preconditions.checkArgument(serdeLib.endsWith(ORC_SERDE),
+        "Writes for non-ORC tables are not supported. Table: " + tableName + " is not an ORC table");
   }
 
   @Override public void commit(WriterCommitMessage[] messages) {

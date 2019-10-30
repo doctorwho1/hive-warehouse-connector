@@ -194,28 +194,41 @@ class JDBCWrapper {
     try {
       var partInfoSeen = false
       var detailedInfoSeen = false
+      var storageInfoSeen = false
       val columns = new java.util.ArrayList[Column]()
       val partitionedCols = new java.util.ArrayList[Column]()
-      // breaking on detailedInfoSeen as of now
-      while (rs.next() && !detailedInfoSeen) {
+      val detailedInfoCols = new java.util.ArrayList[Column]()
+      val storageInfoCols = new java.util.ArrayList[Column]()
+
+      while (rs.next()) {
         val colName = rs.getString("col_name")
         if (!colName.trim.isEmpty && !colName.startsWith("#")) {
           val dataType = rs.getString("data_type")
           val comment = rs.getString("comment")
-          if (partInfoSeen) {
-            partitionedCols.add(new Column(colName, dataType, comment))
+          val column = new Column(colName.trim, dataType, comment)
+          if (storageInfoSeen) {
+            storageInfoCols.add(column)
+          } else if (detailedInfoSeen) {
+            detailedInfoCols.add(column)
+          } else if (partInfoSeen) {
+            partitionedCols.add(column)
           } else {
-            columns.add(new Column(colName, dataType, comment))
+            columns.add(column)
           }
+
         } else if (colName.startsWith("# Partition Information")) {
           partInfoSeen = true
         } else if (colName.startsWith("# Detailed Table Information")) {
           detailedInfoSeen = true
+        } else if (colName.startsWith("# Storage Information")) {
+          storageInfoSeen = true
         }
       }
       val describeTableOutput = new DescribeTableOutput
       describeTableOutput.setColumns(columns)
       describeTableOutput.setPartitionedColumns(partitionedCols)
+      describeTableOutput.setDetailedTableInfo(detailedInfoCols)
+      describeTableOutput.setStorageInfo(storageInfoCols)
       describeTableOutput
     } finally {
       rs.close()
