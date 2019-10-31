@@ -215,7 +215,7 @@ public class HiveWarehouseSessionImpl extends com.hortonworks.hwc.HiveWarehouseS
     return executeQueryInternal(sql, numSplitsToDemand);
   }
 
-  private String getJdbcUrlForExecutor() {
+  public String getJdbcUrlForExecutor() {
     RuntimeConfig conf = session().conf();
     if ((conf.contains(HWConf.HIVESERVER2_CREDENTIAL_ENABLED) && conf.get(HWConf.HIVESERVER2_CREDENTIAL_ENABLED).equals("true"))
             || conf.contains(HWConf.HIVESERVER2_JDBC_URL_PRINCIPAL)) {
@@ -371,5 +371,8 @@ public class HiveWarehouseSessionImpl extends com.hortonworks.hwc.HiveWarehouseS
     }
   }
 
+  public String getSessionId() {
+    return this.sessionId;
+  }
 }
 
