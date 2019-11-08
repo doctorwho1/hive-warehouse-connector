@@ -17,6 +17,7 @@
 
 package com.hortonworks.spark.sql.hive.llap;
 
+import com.hortonworks.spark.sql.hive.llap.readers.HiveWarehouseDataSourceReader;
 import org.apache.spark.sql.sources.Filter;
 import org.apache.spark.sql.sources.v2.reader.SupportsPushDownFilters;
 import org.apache.spark.sql.sources.v2.reader.SupportsPushDownRequiredColumns;
@@ -29,7 +30,7 @@ import java.util.Map;
 /**
  * PrunedFilteredHiveWarehouseDataSourceReader implements interfaces needed for pushdowns and pruning.
  */
-public class PrunedFilteredHiveWarehouseDataSourceReader
+public class PrunedFilteredHiveDataSourceReader
     extends HiveWarehouseDataSourceReader
     implements SupportsPushDownRequiredColumns, SupportsPushDownFilters {
 
@@ -39,7 +40,7 @@ public class PrunedFilteredHiveWarehouseDataSourceReader
   // is never called, empty array should be returned for this case."
   Filter[] pushedFilters = new Filter[0];
 
-  public PrunedFilteredHiveWarehouseDataSourceReader(Map<String, String> options) throws IOException {
+  public PrunedFilteredHiveDataSourceReader(Map<String, String> options) throws IOException {
     super(options);
   }
 

@@ -17,15 +17,15 @@
 
 package com.hortonworks.spark.sql.hive.llap
 
+import com.hortonworks.spark.sql.hive.llap.common.HWConf;
 import java.net.URI
 import java.sql.{Connection, DatabaseMetaData, Driver, DriverManager, ResultSet, ResultSetMetaData, SQLException}
 import java.util.{Properties, StringJoiner}
 
-import com.hortonworks.spark.sql.hive.llap.common.{Column, DescribeTableOutput}
+import com.hortonworks.spark.sql.hive.llap.common.{Column, DescribeTableOutput, DriverResultSet}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
-
 import org.apache.commons.dbcp2.BasicDataSource
 import org.apache.commons.dbcp2.BasicDataSourceFactory
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector.Category
@@ -313,7 +313,7 @@ class JDBCWrapper {
         val row = new GenericRow(rowData)
         data.add(row)
       }
-      return new DriverResultSet(data, schema)
+      return new common.DriverResultSet(data, schema)
     } finally {
       rs.close()
       stmt.close()

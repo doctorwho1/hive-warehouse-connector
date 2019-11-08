@@ -4,6 +4,7 @@ import org.apache.spark.sql.SparkSession;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import com.hortonworks.spark.sql.hive.llap.common.HWConf;
 import static org.junit.Assert.assertEquals;
 
 public class TestSecureHS2Url extends SessionTestBase {

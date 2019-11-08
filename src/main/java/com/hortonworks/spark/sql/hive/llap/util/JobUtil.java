@@ -1,7 +1,19 @@
 package com.hortonworks.spark.sql.hive.llap.util;
 
-import com.hortonworks.spark.sql.hive.llap.HWConf;
+import com.hortonworks.spark.sql.hive.llap.common.HWConf;
+import org.apache.arrow.memory.BufferAllocator;
+import org.apache.hadoop.hive.ql.io.arrow.ArrowWrapperWritable;
+import org.apache.hadoop.hive.llap.LlapBaseInputFormat;
+import org.apache.hadoop.hive.llap.LlapInputSplit;
+import org.apache.hadoop.hive.llap.SubmitWorkInfo;
+import org.apache.hadoop.hive.ql.io.arrow.RootAllocatorFactory;
+import org.apache.hadoop.mapreduce.JobID;
+import org.apache.hadoop.mapreduce.TaskAttemptID;
+import org.apache.hadoop.mapreduce.TaskID;
+import org.apache.hadoop.mapreduce.TaskType;
 import org.apache.hadoop.mapred.JobConf;
+import org.apache.hadoop.mapred.RecordReader;
+import org.apache.hadoop.yarn.api.records.ApplicationId;
 import org.apache.spark.SparkContext;
 import org.apache.spark.TaskContext;
 import org.apache.spark.sql.SparkSession;
@@ -86,4 +98,25 @@ public class JobUtil {
     DriverManager.registerDriver((Driver) Class.forName("shadehive.org.apache.hive.jdbc.HiveDriver").newInstance());
   }
 
+  public static TaskAttemptID getTaskAttemptID(LlapInputSplit split) throws IOException {
+    //Get pseudo-ApplicationId to submit task attempt from external client
+    SubmitWorkInfo submitWorkInfo = SubmitWorkInfo.fromBytes(split.getPlanBytes());
+    ApplicationId appId = submitWorkInfo.getFakeAppId();
+    JobID jobId = new JobID(Long.toString(appId.getClusterTimestamp()), appId.getId());
+    //Create TaskAttemptID from Spark TaskContext (TaskType doesn't matter)
+    return new TaskAttemptID(new TaskID(jobId, TaskType.MAP, TaskContext.get().partitionId()), TaskContext.get().attemptNumber());
+  }
+
+  public static RecordReader<?, ArrowWrapperWritable> getLlapArrowBatchRecordReader(
+          LlapInputSplit split, JobConf conf, long arrowAllocatorMax, String attemptId) throws IOException {
+    //Use per-task allocator for accounting only, no need to reserve per-task memory
+    long childAllocatorReservation = 0L;
+    //Break out accounting of direct memory per-task, so we can check no memory is leaked when task is completed
+    BufferAllocator allocator = RootAllocatorFactory.INSTANCE.getOrCreateRootAllocator(arrowAllocatorMax).newChildAllocator(
+            attemptId,
+            childAllocatorReservation,
+            arrowAllocatorMax);
+    LlapBaseInputFormat input = new LlapBaseInputFormat(true, allocator);
+    return input.getRecordReader(split, conf, null);
+  }
 }

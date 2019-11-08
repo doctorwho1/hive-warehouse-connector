@@ -162,7 +162,7 @@ public class HiveQlUtil {
    * @return formatted record
    */
 
-    @Deprecated /* Use com.hortonworks.spark.sql.hive.llap.StreamingRecordFormatter instead.  */
+    @Deprecated /* Use com.hortonworks.spark.sql.hive.llap.writers.streaming.StreamingRecordFormatter instead.  */
     public static Object[] formatRecord(StructType schema, InternalRow record, String escapeDelimiter, String quoteDelimiter) {
       StructField[] schemaFields = schema.fields();
       Object[] arr = new Object[record.numFields()];
