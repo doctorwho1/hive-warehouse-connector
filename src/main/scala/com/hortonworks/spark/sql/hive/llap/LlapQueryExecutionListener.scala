@@ -17,6 +17,7 @@
 
 package com.hortonworks.spark.sql.hive.llap
 
+import com.hortonworks.spark.sql.hive.llap.readers.{HiveWarehouseDataSourceReader, row}
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.execution._
 import org.apache.spark.sql.execution.datasources.v2._

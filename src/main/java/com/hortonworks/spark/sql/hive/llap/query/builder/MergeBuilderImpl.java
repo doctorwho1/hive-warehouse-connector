@@ -1,6 +1,7 @@
-package com.hortonworks.spark.sql.hive.llap;
+package com.hortonworks.spark.sql.hive.llap.query.builder;
 
 import com.hortonworks.hwc.MergeBuilder;
+import com.hortonworks.spark.sql.hive.llap.HiveWarehouseSession;
 import org.apache.commons.lang3.StringUtils;
 
 import static java.lang.String.join;

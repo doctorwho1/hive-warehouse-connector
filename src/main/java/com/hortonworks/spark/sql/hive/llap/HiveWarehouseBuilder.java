@@ -17,14 +17,15 @@
 
 package com.hortonworks.spark.sql.hive.llap;
 
+import com.hortonworks.spark.sql.hive.llap.common.HWConf;
 import org.apache.spark.sql.SparkSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.Tuple2;
 
-import static com.hortonworks.spark.sql.hive.llap.HWConf.HIVESERVER2_CREDENTIAL_ENABLED;
-import static com.hortonworks.spark.sql.hive.llap.HWConf.HIVESERVER2_JDBC_URL;
-import static com.hortonworks.spark.sql.hive.llap.HWConf.HIVESERVER2_JDBC_URL_PRINCIPAL;
+import static com.hortonworks.spark.sql.hive.llap.common.HWConf.HIVESERVER2_CREDENTIAL_ENABLED;
+import static com.hortonworks.spark.sql.hive.llap.common.HWConf.HIVESERVER2_JDBC_URL;
+import static com.hortonworks.spark.sql.hive.llap.common.HWConf.HIVESERVER2_JDBC_URL_PRINCIPAL;
 
 public class HiveWarehouseBuilder {
 

@@ -1,6 +1,11 @@
 package com.hortonworks.spark.sql.hive.llap;
 
 import com.google.common.base.Preconditions;
+import com.hortonworks.spark.sql.hive.llap.common.HWConf;
+import com.hortonworks.spark.sql.hive.llap.readers.HiveDataSourceReaderForSpark23X;
+import com.hortonworks.spark.sql.hive.llap.readers.HiveWarehouseDataSourceReader;
+import com.hortonworks.spark.sql.hive.llap.readers.PrunedFilteredHiveDataSourceReader;
+import com.hortonworks.spark.sql.hive.llap.writers.HiveWarehouseDataSourceWriter;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -22,22 +27,26 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Optional;
 
-import static com.hortonworks.spark.sql.hive.llap.HWConf.DISABLE_PRUNING_AND_PUSHDOWNS;
-import static com.hortonworks.spark.sql.hive.llap.HWConf.USE_SPARK23X_SPECIFIC_READER;
+import static com.hortonworks.spark.sql.hive.llap.common.HWConf.DISABLE_PRUNING_AND_PUSHDOWNS;
+import static com.hortonworks.spark.sql.hive.llap.common.HWConf.USE_SPARK23X_SPECIFIC_READER;
 
 /*
  * Driver:
- *   UserCode -> HiveWarehouseConnector -> HiveWarehouseDataSourceReader -> HiveWarehouseDataReaderFactory
+ *   UserCode -> HiveWarehouseConnector -> HiveWarehouseDataSourceReader
+ *            -> HiveWarehouseDataReaderFactory (or) HiveWarehouseBatchDataReaderFactory
  * Task serializer:
- *   HiveWarehouseDataReaderFactory (Driver) -> bytes -> HiveWarehouseDataReaderFactory (Executor task)
+ *   HiveWarehouseDataReaderFactory (Driver) -> bytes -> HiveWarehouseDataReaderFactory (Executor task) (or)
+ *   HiveWarehouseBatchDataReaderFactory (Driver) -> bytes -> HiveWarehouseBatchDataReaderFactory (Executor task)
  * Executor:
- *   HiveWarehouseDataReaderFactory -> HiveWarehouseDataReader
+ *   HiveWarehouseDataReaderFactory -> HiveWarehouseDataReader (or)
+ *   HiveWarehouseBatchDataReaderFactory -> HiveWarehouseBatchDataReader
  */
 public class HiveWarehouseConnector implements DataSourceV2, ReadSupport, SessionConfigSupport, WriteSupport {
 
   private static Logger LOG = LoggerFactory.getLogger(HiveWarehouseConnector.class);
 
-  @Override public DataSourceReader createReader(DataSourceOptions options) {
+  @Override
+  public DataSourceReader createReader(DataSourceOptions options) {
     try {
       return getDataSourceReader(getOptions(options));
     } catch (IOException e) {
@@ -51,13 +60,14 @@ public class HiveWarehouseConnector implements DataSourceV2, ReadSupport, Sessio
   public Optional<DataSourceWriter> createWriter(String jobId, StructType schema,
       SaveMode mode, DataSourceOptions options) {
     Map<String, String> params = getOptions(options);
-    String stagingDirPrefix = HWConf.LOAD_STAGING_DIR.getFromOptionsMap(params);
+    String stagingDirPrefix = com.hortonworks.spark.sql.hive.llap.common.HWConf.LOAD_STAGING_DIR.getFromOptionsMap(params);
     Path path = new Path(stagingDirPrefix);
     Configuration conf = SparkSession.getActiveSession().get().sparkContext().hadoopConfiguration();
     return Optional.of(getDataSourceWriter(jobId, schema, path, params, conf, mode));
   }
 
-  @Override public String keyPrefix() {
+  @Override
+  public String keyPrefix() {
     return HiveWarehouseSession.HIVE_WAREHOUSE_POSTFIX;
   }
 
@@ -66,25 +76,25 @@ public class HiveWarehouseConnector implements DataSourceV2, ReadSupport, Sessio
   }
 
   protected DataSourceReader getDataSourceReader(Map<String, String> params) throws IOException {
-
     boolean useSpark23xReader = BooleanUtils.toBoolean(USE_SPARK23X_SPECIFIC_READER.getFromOptionsMap(params));
     boolean disablePruningPushdown = BooleanUtils.toBoolean(DISABLE_PRUNING_AND_PUSHDOWNS.getFromOptionsMap(params));
 
     LOG.info("Found reader configuration - {}={}, {}={}", USE_SPARK23X_SPECIFIC_READER.getQualifiedKey(), useSpark23xReader,
-        DISABLE_PRUNING_AND_PUSHDOWNS.getQualifiedKey(), disablePruningPushdown);
-
+            DISABLE_PRUNING_AND_PUSHDOWNS.getQualifiedKey(), disablePruningPushdown);
     Preconditions.checkState(!(useSpark23xReader && disablePruningPushdown), HWConf.INVALID_READER_CONFIG_ERR_MSG);
 
+    HiveWarehouseDataSourceReader dataSourceReader;
     if (useSpark23xReader) {
-      LOG.info("Using reader HiveWarehouseDataSourceReaderForSpark23x with column pruning disabled");
-      return new HiveWarehouseDataSourceReaderForSpark23x(params);
+      LOG.info("Using reader HiveDataSourceReaderForSpark23X with column pruning disabled");
+      dataSourceReader = new HiveDataSourceReaderForSpark23X(params);
     } else if (disablePruningPushdown) {
       LOG.info("Using reader HiveWarehouseDataSourceReader with column pruning and filter pushdown disabled");
-      return new HiveWarehouseDataSourceReader(params);
+      dataSourceReader = new HiveWarehouseDataSourceReader(params);
     } else {
-      LOG.info("Using reader PrunedFilteredHiveWarehouseDataSourceReader");
-      return new PrunedFilteredHiveWarehouseDataSourceReader(params);
+      LOG.info("Using reader PrunedFilteredHiveDataSourceReader");
+      dataSourceReader = new PrunedFilteredHiveDataSourceReader(params);
     }
+    return dataSourceReader;
   }
 
   protected DataSourceWriter getDataSourceWriter(String jobId, StructType schema,

@@ -22,7 +22,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import com.google.common.base.Preconditions;
-import com.hortonworks.spark.sql.hive.llap.CreateTableBuilder;
 import com.hortonworks.spark.sql.hive.llap.common.Column;
 import com.hortonworks.spark.sql.hive.llap.common.DescribeTableOutput;
 import com.hortonworks.spark.sql.hive.llap.util.HiveQlUtil;

@@ -15,16 +15,28 @@
  * limitations under the License.
  */
 
-package com.hortonworks.spark.sql.hive.llap;
+package com.hortonworks.spark.sql.hive.llap.readers;
 
+import com.hortonworks.spark.sql.hive.llap.FilterPushdown;
 import org.apache.spark.sql.sources.Filter;
 import org.apache.spark.sql.sources.v2.reader.SupportsPushDownFilters;
 
 import java.util.Arrays;
 import java.util.Map;
 
-public class HiveWarehouseDataSourceReaderWithFilterPushDown extends HiveWarehouseDataSourceReader
-    implements SupportsPushDownFilters {
+/**
+ * 1. Spark pulls the unpruned schema -> readSchema()
+ * 2. Spark pushes the top-level filters -> pushFilters(..)
+ * 3. Spark pulls the filters that are supported by datasource -> pushedFilters(..)
+ * 4. Spark pulls factories, where factory/task are 1:1
+ *          -> if (enableBatchRead)
+ *               createBatchDataReaderFactories(..)
+ *             else
+ *               createDataReaderFactories(..)
+ */
+public class HiveDataSourceReaderWithFilterPushDown
+        extends HiveWarehouseDataSourceReader
+        implements SupportsPushDownFilters {
 
   //Pushed down filters
   //
@@ -32,7 +44,7 @@ public class HiveWarehouseDataSourceReaderWithFilterPushDown extends HiveWarehou
   // is never called, empty array should be returned for this case."
   protected Filter[] pushedFilters = new Filter[0];
 
-  public HiveWarehouseDataSourceReaderWithFilterPushDown(Map<String, String> options) {
+  public HiveDataSourceReaderWithFilterPushDown(Map<String, String> options) {
     super(options);
   }
 

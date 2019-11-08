@@ -2,6 +2,9 @@ package com.hortonworks.spark.sql.hive.llap;
 
 import com.hortonworks.spark.sql.hive.llap.util.SerializableHadoopConfiguration;
 import com.hortonworks.spark.sql.hive.llap.util.SparkToHiveRecordMapper;
+import com.hortonworks.spark.sql.hive.llap.writers.HiveWarehouseDataSourceWriter;
+import com.hortonworks.spark.sql.hive.llap.writers.HiveWarehouseDataWriter;
+import com.hortonworks.spark.sql.hive.llap.writers.HiveWarehouseDataWriterFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -15,13 +18,10 @@ import org.apache.spark.sql.sources.v2.writer.DataWriterFactory;
 import org.apache.spark.sql.sources.v2.writer.WriterCommitMessage;
 import org.apache.spark.sql.types.StructType;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import static com.hortonworks.spark.sql.hive.llap.MockHiveWarehouseConnector.testVector;
 import static org.junit.Assert.assertEquals;
 
 public class MockWriteSupport {

@@ -1,5 +1,6 @@
 package com.hortonworks.spark.sql.hive.llap;
 
+import com.hortonworks.spark.sql.hive.llap.common.HWConf;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.junit.After;
@@ -7,7 +8,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import static com.hortonworks.spark.sql.hive.llap.MockHiveWarehouseConnector.DATA_SOURCE_READER_INSTANCE_COUNT_KEY;
-import static com.hortonworks.spark.sql.hive.llap.MockHiveWarehouseConnector.MockHiveWarehouseDataSourceReaderForSpark23x.FINAL_HIVE_QUERY_KEY;
+import static com.hortonworks.spark.sql.hive.llap.MockHiveWarehouseConnector.MockHiveDataSourceReaderForSpark23X.FINAL_HIVE_QUERY_KEY;
 import static com.hortonworks.spark.sql.hive.llap.TestSecureHS2Url.TEST_HS2_URL;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;

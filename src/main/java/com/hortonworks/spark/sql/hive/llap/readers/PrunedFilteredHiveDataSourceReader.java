@@ -15,23 +15,32 @@
  * limitations under the License.
  */
 
-package com.hortonworks.spark.sql.hive.llap;
+package com.hortonworks.spark.sql.hive.llap.readers;
 
-import org.apache.spark.sql.sources.Filter;
-import org.apache.spark.sql.sources.v2.reader.SupportsPushDownFilters;
+import com.hortonworks.spark.sql.hive.llap.readers.HiveDataSourceReaderWithFilterPushDown;
 import org.apache.spark.sql.sources.v2.reader.SupportsPushDownRequiredColumns;
 import org.apache.spark.sql.types.StructType;
 
 import java.util.Map;
 
 /**
- * PrunedFilteredHiveWarehouseDataSourceReader implements interfaces needed for pushdowns and pruning.
+ * PrunedFilteredHiveDataSourceReader implements interfaces needed for pushdowns and pruning.
+ *
+ * 1. Spark pulls the unpruned schema -> readSchema()
+ * 2. Spark pushes the pruned schema -> pruneColumns(..)
+ * 3. Spark pushes the top-level filters -> pushFilters(..)
+ * 4. Spark pulls the filters that are supported by datasource -> pushedFilters(..)
+ * 5. Spark pulls factories, where factory/task are 1:1
+ *      -> if (enableBatchRead)
+ *           createBatchDataReaderFactories(..)
+ *         else
+ *           createDataReaderFactories(..)
  */
-public class PrunedFilteredHiveWarehouseDataSourceReader
-    extends HiveWarehouseDataSourceReaderWithFilterPushDown
-    implements SupportsPushDownRequiredColumns {
+public class PrunedFilteredHiveDataSourceReader
+        extends HiveDataSourceReaderWithFilterPushDown
+        implements SupportsPushDownRequiredColumns {
 
-  public PrunedFilteredHiveWarehouseDataSourceReader(Map<String, String> options) {
+  public PrunedFilteredHiveDataSourceReader(Map<String, String> options) {
     super(options);
   }
 

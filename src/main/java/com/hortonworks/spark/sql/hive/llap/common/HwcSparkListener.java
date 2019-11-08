@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package com.hortonworks.spark.sql.hive.llap;
+package com.hortonworks.spark.sql.hive.llap.common;
 
 import org.apache.hadoop.hive.llap.LlapBaseInputFormat;
 import org.apache.spark.scheduler.SparkListener;

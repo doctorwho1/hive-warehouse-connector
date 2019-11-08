@@ -1,6 +1,6 @@
 package com.hortonworks.spark.sql.hive.llap.util;
 
-import com.hortonworks.spark.sql.hive.llap.CreateTableBuilder;
+import com.hortonworks.spark.sql.hive.llap.query.builder.CreateTableBuilder;
 import org.apache.hadoop.hive.llap.FieldDesc;
 import org.apache.hadoop.hive.llap.Schema;
 import org.apache.spark.sql.types.*;

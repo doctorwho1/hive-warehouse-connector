@@ -47,5 +47,4 @@ public final class QueryExecutionUtil {
     }
     return resolved;
   }
-
 }

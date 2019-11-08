@@ -17,7 +17,6 @@
 
 package com.hortonworks.spark.sql.hive.llap.common;
 
-import com.hortonworks.spark.sql.hive.llap.SerializableLlapInputSplit;
 import org.apache.spark.broadcast.Broadcast;
 
 import java.io.Serializable;

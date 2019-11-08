@@ -15,8 +15,9 @@
  * limitations under the License.
  */
 
-package com.hortonworks.spark.sql.hive.llap;
+package com.hortonworks.spark.sql.hive.llap.readers;
 
+import com.hortonworks.spark.sql.hive.llap.FilterPushdown;
 import org.apache.spark.sql.sources.Filter;
 
 import java.util.HashSet;
@@ -37,9 +38,9 @@ import java.util.stream.Collectors;
  * on a particular dataframe.
  * This implementation is not thread safe.
  * Since this is runs in spark driver, it is assumed that spark internally never invokes
- * this code in multiple threads for the same instance of HiveWarehouseDataSourceReaderForSpark23x.
+ * this code in multiple threads for the same instance of HiveDataSourceReaderForSpark23X.
  */
-public class HiveWarehouseDataSourceReaderForSpark23x extends HiveWarehouseDataSourceReaderWithFilterPushDown {
+public class HiveDataSourceReaderForSpark23X extends HiveDataSourceReaderWithFilterPushDown {
 
 
   private static final Filter[] EMPTY_FILTER_ARRAY = new Filter[0];
@@ -56,7 +57,7 @@ public class HiveWarehouseDataSourceReaderForSpark23x extends HiveWarehouseDataS
   // For 2. pushFilters() is not invoked by spark and this flag is not set and hence no filters are pushed to hive.
   private boolean currentDFHasFilterCondition = false;
 
-  public HiveWarehouseDataSourceReaderForSpark23x(Map<String, String> options) {
+  public HiveDataSourceReaderForSpark23X(Map<String, String> options) {
     super(options);
   }
 
