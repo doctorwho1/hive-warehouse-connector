@@ -67,7 +67,7 @@ import static com.hortonworks.spark.sql.hive.llap.util.SchemaUtil.getHiveType;
  *
  * @see com.hortonworks.spark.sql.hive.llap.util.SparkToHiveRecordMapper
  */
-public class LoadDataQueryBuilder {
+public class DataWriteQueryBuilder {
 
   private final String database;
   private final String table;
@@ -84,9 +84,10 @@ public class LoadDataQueryBuilder {
   private boolean dynamicPartitionPresent = false;
   private LinkedHashMap<String, String> partitions;
   private boolean createTable = false;
+  private boolean loadData = false;
   private DescribeTableOutput describeTableOutput;
 
-  public LoadDataQueryBuilder(String database, String table, String srcFilePath, String jobId, StructType dfSchema) {
+  public DataWriteQueryBuilder(String database, String table, String srcFilePath, String jobId, StructType dfSchema) {
     this.database = database;
     this.table = table;
     this.srcFilePath = srcFilePath;
@@ -94,32 +95,37 @@ public class LoadDataQueryBuilder {
     this.dfSchema = dfSchema;
   }
 
-  public LoadDataQueryBuilder withCreateTableQuery(boolean createTable) {
+  public DataWriteQueryBuilder withCreateTableQuery(boolean createTable) {
     this.createTable = createTable;
     return this;
   }
 
-  public LoadDataQueryBuilder withOverwriteData(boolean overwriteData) {
+  public DataWriteQueryBuilder withLoadData(boolean loadData) {
+    this.loadData = loadData;
+    return this;
+  }
+
+  public DataWriteQueryBuilder withOverwriteData(boolean overwriteData) {
     this.overwriteData = overwriteData;
     return this;
   }
 
-  public LoadDataQueryBuilder withPartitionSpec(String partitionSpec) {
+  public DataWriteQueryBuilder withPartitionSpec(String partitionSpec) {
     this.partitionSpec = partitionSpec;
     return this;
   }
 
-  public LoadDataQueryBuilder withStorageFormat(String storageFormat) {
+  public DataWriteQueryBuilder withStorageFormat(String storageFormat) {
     this.storageFormat = storageFormat;
     return this;
   }
 
-  public LoadDataQueryBuilder withValidateAgainstHiveColumns(boolean validateAgainstHiveColumns) {
+  public DataWriteQueryBuilder withValidateAgainstHiveColumns(boolean validateAgainstHiveColumns) {
     this.validateAgainstHiveColumns = validateAgainstHiveColumns;
     return this;
   }
 
-  public LoadDataQueryBuilder withDescribeTableOutput(DescribeTableOutput describeTableOutput) {
+  public DataWriteQueryBuilder withDescribeTableOutput(DescribeTableOutput describeTableOutput) {
     this.describeTableOutput = describeTableOutput;
     return this;
   }
@@ -138,11 +144,13 @@ public class LoadDataQueryBuilder {
       ensureAllPartSpecDynamicPartColsAtTheEndOfDFSchema();
       queries.add(buildCreateTableQuery());
     }
-    if (dynamicPartitionPresent) {
-      queries.add(createTempTableQuery());
-      queries.add(insertOverwriteQuery());
-    } else {
-      queries.add(loadInto(srcFilePath, database, table, overwriteData, isPartitionPresent() ? partitionSpec : null));
+    if (loadData) {
+      if (dynamicPartitionPresent) {
+        queries.add(createTempTableQuery());
+        queries.add(insertOverwriteQuery());
+      } else {
+        queries.add(loadInto(srcFilePath, database, table, overwriteData, isPartitionPresent() ? partitionSpec : null));
+      }
     }
     return queries;
   }

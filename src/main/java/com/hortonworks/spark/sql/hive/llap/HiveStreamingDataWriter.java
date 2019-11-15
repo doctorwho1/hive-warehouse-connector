@@ -130,7 +130,7 @@ public class HiveStreamingDataWriter implements DataWriter<InternalRow> {
       " connectionStats: " + streamingConnection.getConnectionStats();
     streamingConnection.close();
     LOG.info("Closing streaming connection on commit. Msg: {} rowsWritten: {}", rowsWritten);
-    return new SimpleWriterCommitMessage(msg);
+    return new SimpleWriterCommitMessage(msg, null);
   }
 
   @Override

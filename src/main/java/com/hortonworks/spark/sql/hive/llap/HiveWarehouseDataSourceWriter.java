@@ -17,6 +17,7 @@
 
 package com.hortonworks.spark.sql.hive.llap;
 
+import java.io.IOException;
 import java.sql.Connection;
 import java.util.List;
 import java.util.Map;
@@ -24,13 +25,16 @@ import java.util.Map;
 import com.google.common.base.Preconditions;
 import com.hortonworks.spark.sql.hive.llap.common.Column;
 import com.hortonworks.spark.sql.hive.llap.common.DescribeTableOutput;
-import com.hortonworks.spark.sql.hive.llap.query.builder.LoadDataQueryBuilder;
+import com.hortonworks.spark.sql.hive.llap.query.builder.DataWriteQueryBuilder;
 import com.hortonworks.spark.sql.hive.llap.util.SchemaUtil;
 import com.hortonworks.spark.sql.hive.llap.util.SerializableHadoopConfiguration;
 import com.hortonworks.spark.sql.hive.llap.util.SparkToHiveRecordMapper;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.spark.sql.SaveMode;
 import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.sources.v2.writer.DataWriterFactory;
@@ -41,10 +45,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.Option;
 
-import java.sql.Connection;
-import java.util.Map;
-
-import static com.hortonworks.spark.sql.hive.llap.util.HiveQlUtil.loadInto;
+import java.util.HashMap;
 
 /**
  * Data source writer implementation to facilitate creation of {@link DataWriterFactory} and drive the writing process.
@@ -94,6 +95,13 @@ public class HiveWarehouseDataSourceWriter implements SupportsWriteInternalRow {
     this.schema = schema;
     this.mode = mode;
     this.path = new Path(path, jobId);
+    try {
+      if (this.path.getFileSystem(conf).exists(this.path)) {
+        logInfo("DataSourceWriter " + this + " found the target directory (" + this.path + "} already exists");
+      }
+    } catch (IOException e) {
+      throw new RuntimeException("Unable to access the file system for the path (" + this.path + ") due to " + e.getMessage(), e);
+    }
     this.conf = conf;
     populateDBTableNames(options.get("database"));
     this.strictColumnNamesMapping =
@@ -141,7 +149,14 @@ public class HiveWarehouseDataSourceWriter implements SupportsWriteInternalRow {
         "Writes for non-ORC tables are not supported. Table: " + tableName + " is not an ORC table");
   }
 
-  @Override public void commit(WriterCommitMessage[] messages) {
+  @Override
+  public void commit(WriterCommitMessage[] messages) {
+    boolean needLoadData = (messages.length > 0);
+    if (needLoadData) {
+      // The target directory can have stale data files due to abnormal failures in previous execution.
+      // Such files should be removed before loading them into Hive table.
+      verifyAndCleanTargetDirectory(messages);
+    }
     try {
       String url = HWConf.RESOLVED_HS2_URL.getFromOptionsMap(options);
       String user = HWConf.USER.getFromOptionsMap(options);
@@ -152,7 +167,7 @@ public class HiveWarehouseDataSourceWriter implements SupportsWriteInternalRow {
       database = tableRef.databaseName;
       table = tableRef.tableName;
       try (Connection conn = DefaultJDBCWrapper.getConnector(Option.empty(), url, user, dbcp2Configs)) {
-        handleWriteWithSaveMode(database, table, conn);
+        handleWriteWithSaveMode(database, table, conn, needLoadData);
       } catch (java.sql.SQLException e) {
         throw new RuntimeException(e);
       }
@@ -166,9 +181,44 @@ public class HiveWarehouseDataSourceWriter implements SupportsWriteInternalRow {
     }
   }
 
-  private void handleWriteWithSaveMode(String database, String table, Connection conn) {
+  private void verifyAndCleanTargetDirectory(WriterCommitMessage[] messages) {
+    // Assumptions:
+    // 1. The input messages have only one commit message per writer.
+    // 2. Any written file is not duplicated in multiple commit messages.
+    // 3. All the written files are directly present inside the target directory this.path.
+    Map<String, Path> writtenFilesMap = new HashMap<>(messages.length);
+    for (WriterCommitMessage wcm : messages) {
+      Path writtenFilePath = ((SimpleWriterCommitMessage)wcm).getWrittenFilePath();
+      String writtenFileName = writtenFilePath.getName();
+      writtenFilesMap.put(writtenFileName, writtenFilePath);
+      logInfo("Committed File " + writtenFilePath);
+    }
+
+    try {
+      // All the files are present in target directory and hence need not traverse recursively.
+      // If any directory exist, then just delete it.
+      FileSystem fs = this.path.getFileSystem(conf);
+      RemoteIterator<LocatedFileStatus> actualFiles = fs.listFiles(this.path, false);
+      while (actualFiles.hasNext()) {
+        LocatedFileStatus fileStatus = actualFiles.next();
+        Path filePath = fileStatus.getPath();
+        if (fileStatus.isDirectory() || (writtenFilesMap.get(filePath.getName()) == null)) {
+          logInfo("Deleting invalid file/directory " + filePath);
+          fs.delete(filePath, true);
+        } else {
+          if (fileStatus.getLen() == 0) {
+            throw new IllegalStateException("Writer wrote 0 length data file (" + filePath + ") which is not valid.");
+          }
+        }
+      }
+    } catch (IOException e) {
+      throw new IllegalStateException("Failed to traverse the target directory " + this.path + " due to " + e.getMessage(), e);
+    }
+  }
+
+  private void handleWriteWithSaveMode(String database, String table, Connection conn, boolean needLoadData) {
     boolean createTable = false;
-    boolean loadData = false;
+    boolean loadData = needLoadData;
     boolean overwrite = false;
     switch (mode) {
       case ErrorIfExists:
@@ -176,7 +226,6 @@ public class HiveWarehouseDataSourceWriter implements SupportsWriteInternalRow {
           throw new IllegalArgumentException("Table[" + table + "] already exists, please specify a different SaveMode");
         }
         createTable = true;
-        loadData = true;
         break;
       //same behavior for overwrite and append apart from `overwrite` flag
       case Overwrite:
@@ -187,13 +236,14 @@ public class HiveWarehouseDataSourceWriter implements SupportsWriteInternalRow {
         if (!tableExists) {
           createTable = true;
         }
-        loadData = true;
         break;
       case Ignore:
         //NO-OP if table already exists
-        if (!tableExists) {
+        if (tableExists) {
+          createTable = false;
+          loadData = false;
+        } else {
           createTable = true;
-          loadData = true;
         }
         break;
     }
@@ -201,11 +251,11 @@ public class HiveWarehouseDataSourceWriter implements SupportsWriteInternalRow {
     LOG.info("Handling write: database:{}, table:{}, savemode: {}, tableExists:{}, createTable:{}, loadData:{}",
         database, table, mode, tableExists, createTable, loadData);
 
-    if (loadData) {
+    if (loadData || createTable) {
       // check for column names and order equivalence in case the table exists.
       boolean validateAgainstHiveCols = tableExists && strictColumnNamesMapping;
 
-      LoadDataQueryBuilder builder = new LoadDataQueryBuilder(database, table, path.toString(), jobId,
+      DataWriteQueryBuilder builder = new DataWriteQueryBuilder(database, table, path.toString(), jobId,
           sparkToHiveRecordMapper.getSchemaInHiveColumnsOrder())
           .withOverwriteData(overwrite)
           .withPartitionSpec(options.get(HWConf.PARTITION_OPTION_KEY))
@@ -213,6 +263,7 @@ public class HiveWarehouseDataSourceWriter implements SupportsWriteInternalRow {
           .withStorageFormat("ORC")
           .withValidateAgainstHiveColumns(validateAgainstHiveCols)
           .withDescribeTableOutput(describeTableOutput)
+          .withLoadData(loadData)
           ;
       List<String> loadDataQueries = builder.build();
 
@@ -241,6 +292,10 @@ public class HiveWarehouseDataSourceWriter implements SupportsWriteInternalRow {
       LOG.warn("Failed to cleanup temp dir {}", path.toString());
     }
     LOG.error("Aborted DataWriter job {}", jobId);
+  }
+
+  private void logInfo(String msg) {
+    LOG.info("HiveWarehouseDataSourceWriter: {}, msg:{} ", this, msg);
   }
 
 }

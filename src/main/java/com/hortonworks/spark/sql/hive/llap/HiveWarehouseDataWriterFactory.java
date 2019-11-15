@@ -30,7 +30,8 @@ public class HiveWarehouseDataWriterFactory implements DataWriterFactory<Interna
     this.sparkToHiveRecordMapper = sparkToHiveRecordMapper;
   }
 
-  @Override public DataWriter<InternalRow> createDataWriter(int partitionId, int attemptNumber) {
+  @Override
+  public DataWriter<InternalRow> createDataWriter(int partitionId, int attemptNumber) {
     Path filePath = new Path(this.path, String.format("%s_%s_%s", jobId, partitionId, attemptNumber));
     FileSystem fs = null;
     try {

@@ -17,7 +17,7 @@
 
 package com.hortonworks.spark.sql.hive.llap
 
-import com.hortonworks.spark.sql.hive.llap.query.builder.LoadDataQueryBuilderTest
+import com.hortonworks.spark.sql.hive.llap.query.builder.DataWriteQueryBuilderTest
 import org.scalatest.FunSuite
 
 class TestJavaProxy extends FunSuite {
@@ -101,10 +101,11 @@ class TestJavaProxy extends FunSuite {
     withSetUpAndTearDown(test, test.testTimestampSchemaUnsafeRow)
   }
 
-  test("LoadDataQueryBuilderTest") {
-    val test = new LoadDataQueryBuilderTest()
+  test("DataWriteQueryBuilderTest") {
+    val test = new DataWriteQueryBuilderTest()
     withSetUpAndTearDown(test, test.testWithoutPartitions)
     withSetUpAndTearDown(test, test.testWithoutPartitionsWithCreateTable)
+    withSetUpAndTearDown(test, test.testWithoutLoadDataWithCreateTable)
     withSetUpAndTearDown(test, test.testWithoutPartitionsWithCreateTableAndOverwrite)
     withSetUpAndTearDown(test, test.testWithStaticPartitioning)
     withSetUpAndTearDown(test, test.testWithDynamicPartitioning)
