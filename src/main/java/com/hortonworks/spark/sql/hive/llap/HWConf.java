@@ -68,6 +68,9 @@ public enum HWConf {
   public static final String SPARK_SUBMIT_DEPLOYMODE = "spark.submit.deployMode";
   public static final String SPARK_MASTER = "spark.master";
   public static final String PARTITION_OPTION_KEY = "partition";
+  public static final String HWC_EXECUTION_MODE = "spark.sql.hive.hwc.execution.mode";
+  public static final String HWC_EXECUTION_MODE_LLAP = "llap";
+  public static final String HWC_EXECUTION_MODE_SPARK = "spark";
 
   public String getQualifiedKey() {
     return qualifiedKey;
@@ -88,6 +91,20 @@ public enum HWConf {
     String value = options.get(simpleKey);
     return Optional.ofNullable(value != null ? value : options.get(simpleKey.toLowerCase()))
         .orElse(defaultValue == null ? null : defaultValue.toString());
+  }
+
+  public static String getHwcExecutionMode(HiveWarehouseSessionState state) {
+    if (state.session.conf().contains(HWC_EXECUTION_MODE)) {
+      return state.session.conf().get(HWC_EXECUTION_MODE);
+    }
+    return HWC_EXECUTION_MODE_LLAP;
+  }
+
+  public static String getSparkSqlExtension(HiveWarehouseSessionState state) {
+    if (state.session.conf().contains("spark.sql.extensions")) {
+      return state.session.conf().get("spark.sql.extensions");
+    }
+    return "";
   }
 
   String getString(HiveWarehouseSessionState state) {

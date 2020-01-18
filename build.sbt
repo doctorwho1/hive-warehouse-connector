@@ -19,6 +19,7 @@ val tezVersion = sys.props.getOrElse("tez.version", "0.9.1")
 val thriftVersion = sys.props.getOrElse("thrift.version", "0.9.3")
 val gbnUrl = sys.props.getOrElse("gbnurl", "https://repo1.maven.org/maven2/")
 val repoUrl = sys.props.getOrElse("repourl", "https://repo1.maven.org/maven2/")
+val sparkAcidVersion = sys.props.getOrElse("spark.acid.version", "0.4.0.7.1.0.0-SNAPSHOT")
 
 spName := "hortonworks/hive-warehouse-connector"
 
@@ -32,6 +33,7 @@ checksums in update := Nil
 
 libraryDependencies ++= Seq(
 
+  "com.qubole" % "spark-acid_2.11" % sparkAcidVersion,
   "junit" % "junit" % "4.11" % "test",
   "com.novocode" % "junit-interface" % "0.11" % "test",
   "org.apache.spark" %% "spark-core" % testSparkVersion.value % "provided" force(),
@@ -372,7 +374,7 @@ packageOptions in assembly +=
 resolvers += "Local Maven Repository" at "file://"+Path.userHome.absolutePath+"/.m2/repository"
 resolvers += "GBN Maven Repository" at gbnUrl
 resolvers += "Additional Maven Repository" at repoUrl
-resolvers += "Hortonworks Maven Repository" at "http://repo.hortonworks.com/content/groups/public/"
+resolvers += "Hortonworks Maven Repository" at "https://repo.hortonworks.com/content/groups/public/"
 
 publishMavenStyle := true
 pomIncludeRepository := { _ => false } // Remove repositories from pom

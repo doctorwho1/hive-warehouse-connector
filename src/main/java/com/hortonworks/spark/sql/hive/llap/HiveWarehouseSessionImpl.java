@@ -116,7 +116,8 @@ public class HiveWarehouseSessionImpl extends com.hortonworks.hwc.HiveWarehouseS
 
   @Override
   public Dataset<Row> sql(String queryToFetchData) {
-    if (BooleanUtils.toBoolean(HWConf.READ_VIA_LLAP.getString(sessionState))) {
+    if (BooleanUtils.toBoolean(HWConf.READ_VIA_LLAP.getString(sessionState)) ||
+            HWConf.getHwcExecutionMode(sessionState).equalsIgnoreCase(HWConf.HWC_EXECUTION_MODE_SPARK)) {
       return executeQueryInternal(queryToFetchData, null);
     }
     if (HWConf.READ_JDBC_MODE.getString(sessionState).equalsIgnoreCase("client")) {
@@ -142,6 +143,14 @@ public class HiveWarehouseSessionImpl extends com.hortonworks.hwc.HiveWarehouseS
     // If query is select query, then used HiveWarehouseDataSource or else use Simple JDBC in case of DDL operations.
     if ((sql != null) && selectPattern.matcher(sql).matches()) {
       ensureSessionOpen();
+      if (HWConf.getHwcExecutionMode(sessionState).equalsIgnoreCase(HWConf.HWC_EXECUTION_MODE_SPARK)) {
+        if (!HWConf.getSparkSqlExtension(sessionState).
+                contains("com.qubole.spark.hiveacid.HiveAcidAutoConvertExtension")) {
+          LOG.info("For spark execution, set " +
+                  "spark.sql.extensions to com.qubole.spark.hiveacid.HiveAcidAutoConvertExtension");
+        }
+        return session().sql(sql);
+      }
       String mode = EXECUTE_QUERY_LLAP.name();
       DataFrameReader dfr = session().read().format(HIVE_WAREHOUSE_CONNECTOR_INTERNAL).option("query", sql)
               .option(HWC_SESSION_ID_KEY, sessionId).option(HWC_QUERY_MODE, mode);
