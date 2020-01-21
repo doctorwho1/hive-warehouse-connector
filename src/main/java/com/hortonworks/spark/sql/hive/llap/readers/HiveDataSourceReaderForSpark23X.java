@@ -20,6 +20,9 @@ package com.hortonworks.spark.sql.hive.llap.readers;
 import com.hortonworks.spark.sql.hive.llap.FilterPushdown;
 import org.apache.spark.sql.sources.Filter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -42,6 +45,7 @@ import java.util.stream.Collectors;
  */
 public class HiveDataSourceReaderForSpark23X extends HiveDataSourceReaderWithFilterPushDown {
 
+  private static Logger LOG = LoggerFactory.getLogger(HiveDataSourceReaderForSpark23X.class);
 
   private static final Filter[] EMPTY_FILTER_ARRAY = new Filter[0];
 
@@ -57,8 +61,18 @@ public class HiveDataSourceReaderForSpark23X extends HiveDataSourceReaderWithFil
   // For 2. pushFilters() is not invoked by spark and this flag is not set and hence no filters are pushed to hive.
   private boolean currentDFHasFilterCondition = false;
 
+  // The following indicates whether the query plan wants all rows returned from this reader,
+  // regardless of any filters that have been or will be pushed down. Once set to true, this
+  // flag is never reset. If true, this flag overrides currentDFHasFilterCondition
+  private boolean doFullScan = false;
+
   public HiveDataSourceReaderForSpark23X(Map<String, String> options) {
     super(options);
+  }
+
+  public void doHWCFullScan() {
+    LOG.debug("Query plan requested that all rows be returned for this reader " + this);
+    doFullScan = true;
   }
 
   @Override
@@ -97,7 +111,7 @@ public class HiveDataSourceReaderForSpark23X extends HiveDataSourceReaderWithFil
 
   @Override
   protected String buildWhereClauseFromFilters(Filter[] filters) {
-    final String whereClause = currentDFHasFilterCondition && !allFiltersToPush.isEmpty() ?
+    final String whereClause = currentDFHasFilterCondition && !doFullScan && !allFiltersToPush.isEmpty() ?
         " WHERE " + allFiltersToPush.stream()
             .map(this::buildFilterStringWithAndJoiner)
             .collect(Collectors.joining(" OR ")) : "";
