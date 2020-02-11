@@ -161,6 +161,7 @@ dependencyOverrides += "com.fasterxml.jackson.module" % "jackson-module-scala_2.
 excludeDependencies ++= Seq(
   "commons-cli" % "commons-cli",
   "org.apache.calcite" % "*",
+  "jline" % "jline",
   "org.apache.hive.shims" % "*",
   "org.apache.hive" % "hive-serde",
   "org.apache.hive" % "hive-shims-0.20",
