@@ -28,4 +28,6 @@ public abstract class HiveWarehouseSession implements com.hortonworks.spark.sql.
     public static HiveWarehouseBuilder session(SparkSession session) {
         return HiveWarehouseBuilder.session(session);
     }
+
+  public abstract void commitTxn();
 }

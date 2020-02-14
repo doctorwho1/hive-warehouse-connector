@@ -36,6 +36,7 @@ import org.apache.spark.sql.RuntimeConfig;
 import org.apache.spark.sql.SparkSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.qubole.spark.hiveacid.transaction.HiveAcidTxnManagerObject;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -98,6 +99,9 @@ public class HiveWarehouseSessionImpl extends com.hortonworks.hwc.HiveWarehouseS
     sessionState.session.listenerManager().register(new LlapQueryExecutionListener());
     sessionState.session.sparkContext().addSparkListener(new HwcSparkListener());
     hwcSessionStateRef = new AtomicReference<>(HwcSessionState.OPEN);
+    if (HWConf.getHwcExecutionMode(sessionState).equalsIgnoreCase(HWConf.HWC_EXECUTION_MODE_SPARK)) {
+      HiveAcidTxnManagerObject.registerTxnListeners(session());
+    }
     LOG.info("Created a new HWC session: {}", sessionId);
   }
 
@@ -149,6 +153,7 @@ public class HiveWarehouseSessionImpl extends com.hortonworks.hwc.HiveWarehouseS
           LOG.info("For spark execution, set " +
                   "spark.sql.extensions to com.qubole.spark.hiveacid.HiveAcidAutoConvertExtension");
         }
+        HiveAcidTxnManagerObject.openTxn(session());
         return session().sql(sql);
       }
       String mode = EXECUTE_QUERY_LLAP.name();
@@ -370,7 +375,19 @@ public class HiveWarehouseSessionImpl extends com.hortonworks.hwc.HiveWarehouseS
   }
 
   @Override
+  public void commitTxn() {
+    if (HWConf.getHwcExecutionMode(sessionState).equalsIgnoreCase(HWConf.HWC_EXECUTION_MODE_SPARK)) {
+      HiveAcidTxnManagerObject.commitTxn(session());
+    }
+  }
+
+  @Override
   public void close() {
+    try {
+      commitTxn();
+    } catch (Exception e) {
+      LOG.info("Failed to end hive-acid txn. The txn may be committed already.", e);
+    }
     Preconditions.checkState(hwcSessionStateRef.compareAndSet(HwcSessionState.OPEN, HwcSessionState.CLOSED),
         SESSION_CLOSED_MSG);
     try {
