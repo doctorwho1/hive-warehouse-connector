@@ -4,7 +4,7 @@ import com.hortonworks.spark.sql.hive.llap.util.QueryExecutionUtil;
 import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.catalyst.expressions.GenericInternalRow;
 import org.apache.spark.sql.sources.v2.reader.InputPartitionReader;
-import org.apache.spark.sql.types.Decimal;
+import org.apache.spark.sql.types.*;
 import org.apache.spark.unsafe.types.UTF8String;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,6 +19,7 @@ import java.util.Map;
 
 public class JdbcInputPartitionReader implements InputPartitionReader<InternalRow> {
   private final String query;
+  private final StructType schema;
   private Connection conn;
   private PreparedStatement stmt;
   private ResultSet resultSet;
@@ -27,8 +28,9 @@ public class JdbcInputPartitionReader implements InputPartitionReader<InternalRo
 
   private static Logger LOG = LoggerFactory.getLogger(JdbcInputPartitionReader.class);
 
-  JdbcInputPartitionReader(String query, Map<String, String> options) throws Exception {
+  JdbcInputPartitionReader(String query, Map<String, String> options, StructType schema) throws Exception {
     this.query = query;
+    this.schema = schema;
 
     this.conn = getConnection(options);
     this.stmt = conn.prepareStatement(query);
@@ -61,11 +63,13 @@ public class JdbcInputPartitionReader implements InputPartitionReader<InternalRo
     }
   }
 
-  private Object normalizeColValue(Object colValue) {
+  private Object normalizeColValue(Object colValue, DataType dataType) {
     if (colValue instanceof String) {
       colValue = UTF8String.fromString((String)colValue);
     } else if (colValue instanceof BigDecimal) {
       colValue = Decimal.apply((BigDecimal)colValue);
+    } else if (colValue instanceof Double && dataType instanceof FloatType) {
+      colValue = ((Double)colValue).floatValue();
     }
     return colValue;
   }
@@ -109,7 +113,11 @@ public class JdbcInputPartitionReader implements InputPartitionReader<InternalRo
       boolean hasNext = resultSet.next();
       if (hasNext) {
         for (int i = 0; i < numCols; i++) {
-          rowData[i] = normalizeColValue(resultSet.getObject(i + 1));
+          DataType dataType = null;
+          if (schema.size() > i) {
+            dataType = schema.apply(i).dataType();
+          }
+          rowData[i] = normalizeColValue(resultSet.getObject(i + 1), dataType);
         }
       }
       return hasNext;

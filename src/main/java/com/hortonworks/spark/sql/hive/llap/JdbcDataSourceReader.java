@@ -150,7 +150,7 @@ public class JdbcDataSourceReader
   public List<InputPartition<InternalRow>> planInputPartitions() {
     try {
       String queryString = getQueryString(SchemaUtil.columnNames(schema), pushedFilters);
-      return Collections.singletonList(new JdbcInputPartition(queryString, options));
+      return Collections.singletonList(new JdbcInputPartition(queryString, options, schema));
     } catch (Exception e) {
       throw new RuntimeException(e);
     }

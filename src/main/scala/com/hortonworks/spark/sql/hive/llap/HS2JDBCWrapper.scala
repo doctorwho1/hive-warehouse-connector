@@ -308,7 +308,19 @@ class JDBCWrapper {
       while(rs.next()) {
         val rowData = new Array[Any](ncols)
         for (j <- 0 to ncols - 1) {
-          rowData(j) = rs.getObject(j + 1)
+          val dataType = if (schema.size > j) {
+            Some(schema(j).dataType)
+          } else {
+            None
+          }
+          val valueObj = rs.getObject(j + 1)
+          val value = valueObj match {
+            case d: java.lang.Double if dataType.isDefined && dataType.get == FloatType =>
+              d.floatValue()
+            case o @ _ =>
+              o
+          }
+          rowData(j) = value
         }
         val row = new GenericRow(rowData)
         data.add(row)
