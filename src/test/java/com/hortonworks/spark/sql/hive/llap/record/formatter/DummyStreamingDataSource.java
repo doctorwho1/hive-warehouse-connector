@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
 
-import com.hortonworks.spark.sql.hive.llap.StreamingRecordFormatter;
+import com.hortonworks.spark.sql.hive.llap.writers.streaming.StreamingRecordFormatter;
 import org.apache.spark.sql.SaveMode;
 import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.sources.v2.DataSourceOptions;
@@ -32,7 +32,7 @@ import org.apache.spark.sql.sources.v2.DataSourceV2;
 import org.apache.spark.sql.sources.v2.WriteSupport;
 import org.apache.spark.sql.sources.v2.writer.*;
 import org.apache.spark.sql.types.StructType;
-import static com.hortonworks.spark.sql.hive.llap.StreamingRecordFormatter.*;
+import static com.hortonworks.spark.sql.hive.llap.writers.streaming.StreamingRecordFormatter.*;
 
 
 public class DummyStreamingDataSource implements DataSourceV2, WriteSupport, Serializable {

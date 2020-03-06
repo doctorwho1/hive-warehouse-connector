@@ -17,9 +17,7 @@
 
 package com.hortonworks.spark.sql.hive.llap;
 
-import org.apache.spark.sql.SparkSession;
-import org.junit.After;
-import org.junit.Before;
+import com.hortonworks.spark.sql.hive.llap.common.HWConf;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -34,7 +32,7 @@ class HiveWarehouseBuilderTest extends SessionTestBase {
 
     @Test
     void testNewEntryPoint() {
-        session.sessionState().conf().setConfString(HWConf.HIVESERVER2_JDBC_URL, "test");
+        session.sessionState().conf().setConfString(com.hortonworks.spark.sql.hive.llap.common.HWConf.HIVESERVER2_JDBC_URL, "test");
         com.hortonworks.hwc.HiveWarehouseSession hive =
             com.hortonworks.hwc.HiveWarehouseSession.session(session)
                 .userPassword(TEST_USER, TEST_PASSWORD)
@@ -56,30 +54,30 @@ class HiveWarehouseBuilderTest extends SessionTestBase {
                         .sessionStateForTest();
         MockHiveWarehouseSessionImpl hive = new MockHiveWarehouseSessionImpl(sessionState);
         assertEquals(hive.session(), session);
-        assertEquals(HWConf.USER.getString(sessionState), TEST_USER);
-        assertEquals(HWConf.PASSWORD.getString(sessionState), TEST_PASSWORD);
-        assertEquals(HWConf.DBCP2_CONF.getString(sessionState), TEST_DBCP2_CONF);
-        assertEquals(HWConf.MAX_EXEC_RESULTS.getInt(sessionState), TEST_EXEC_RESULTS_MAX);
-        assertEquals(HWConf.DEFAULT_DB.getString(sessionState), TEST_DEFAULT_DB);
+        assertEquals(com.hortonworks.spark.sql.hive.llap.common.HWConf.USER.getString(sessionState), TEST_USER);
+        assertEquals(com.hortonworks.spark.sql.hive.llap.common.HWConf.PASSWORD.getString(sessionState), TEST_PASSWORD);
+        assertEquals(com.hortonworks.spark.sql.hive.llap.common.HWConf.DBCP2_CONF.getString(sessionState), TEST_DBCP2_CONF);
+        assertEquals(com.hortonworks.spark.sql.hive.llap.common.HWConf.MAX_EXEC_RESULTS.getInt(sessionState), TEST_EXEC_RESULTS_MAX);
+        assertEquals(com.hortonworks.spark.sql.hive.llap.common.HWConf.DEFAULT_DB.getString(sessionState), TEST_DEFAULT_DB);
     }
 
     @Test
     void testAllConfConfig() {
-        session.conf().set(HWConf.USER.qualifiedKey, TEST_USER);
-        session.conf().set(HWConf.PASSWORD.qualifiedKey, TEST_PASSWORD);
-        session.conf().set(HWConf.DBCP2_CONF.qualifiedKey, TEST_DBCP2_CONF);
-        session.conf().set(HWConf.MAX_EXEC_RESULTS.qualifiedKey, TEST_EXEC_RESULTS_MAX);
-        session.conf().set(HWConf.DEFAULT_DB.qualifiedKey, TEST_DEFAULT_DB);
+        session.conf().set(com.hortonworks.spark.sql.hive.llap.common.HWConf.USER.getQualifiedKey(), TEST_USER);
+        session.conf().set(com.hortonworks.spark.sql.hive.llap.common.HWConf.PASSWORD.getQualifiedKey(), TEST_PASSWORD);
+        session.conf().set(com.hortonworks.spark.sql.hive.llap.common.HWConf.DBCP2_CONF.getQualifiedKey(), TEST_DBCP2_CONF);
+        session.conf().set(com.hortonworks.spark.sql.hive.llap.common.HWConf.MAX_EXEC_RESULTS.getQualifiedKey(), TEST_EXEC_RESULTS_MAX);
+        session.conf().set(com.hortonworks.spark.sql.hive.llap.common.HWConf.DEFAULT_DB.getQualifiedKey(), TEST_DEFAULT_DB);
         HiveWarehouseSessionState sessionState =
                 HiveWarehouseBuilder
                         .session(session)
                         .sessionStateForTest();
         MockHiveWarehouseSessionImpl hive = new MockHiveWarehouseSessionImpl(sessionState);
         assertEquals(hive.sessionState.session, session);
-        assertEquals(HWConf.USER.getString(hive.sessionState), TEST_USER);
-        assertEquals(HWConf.PASSWORD.getString(hive.sessionState), TEST_PASSWORD);
-        assertEquals(HWConf.DBCP2_CONF.getString(hive.sessionState), TEST_DBCP2_CONF);
-        assertEquals(HWConf.MAX_EXEC_RESULTS.getInt(hive.sessionState), TEST_EXEC_RESULTS_MAX);
+        assertEquals(com.hortonworks.spark.sql.hive.llap.common.HWConf.USER.getString(hive.sessionState), TEST_USER);
+        assertEquals(com.hortonworks.spark.sql.hive.llap.common.HWConf.PASSWORD.getString(hive.sessionState), TEST_PASSWORD);
+        assertEquals(com.hortonworks.spark.sql.hive.llap.common.HWConf.DBCP2_CONF.getString(hive.sessionState), TEST_DBCP2_CONF);
+        assertEquals(com.hortonworks.spark.sql.hive.llap.common.HWConf.MAX_EXEC_RESULTS.getInt(hive.sessionState), TEST_EXEC_RESULTS_MAX);
         assertEquals(HWConf.DEFAULT_DB.getString(hive.sessionState), TEST_DEFAULT_DB);
     }
 }

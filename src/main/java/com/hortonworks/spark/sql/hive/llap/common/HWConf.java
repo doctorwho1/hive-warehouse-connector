@@ -15,11 +15,14 @@
  * limitations under the License.
  */
 
-package com.hortonworks.spark.sql.hive.llap;
+package com.hortonworks.spark.sql.hive.llap.common;
 
 import java.util.Map;
 import java.util.Optional;
 
+import org.apache.commons.lang3.StringUtils;
+import com.hortonworks.spark.sql.hive.llap.HiveWarehouseSession;
+import com.hortonworks.spark.sql.hive.llap.HiveWarehouseSessionState;
 import org.apache.spark.sql.RuntimeConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +49,12 @@ public enum HWConf {
   //on batch write path, setting this ensures that dataframe has columns congruent to hive table
   WRITE_PATH_STRICT_COLUMN_NAMES_MAPPING("write.path.strictColumnNamesMapping",
       warehouseKey("write.path.strictColumnNamesMapping"), "true"),
-  DISABLE_PRUNING_AND_PUSHDOWNS("disable.pruning.and.pushdowns", warehouseKey("disable.pruning.and.pushdowns"), false);
+  BATCH_DATAREADER_COLUMNS_LIMIT("batch.datareader.columns.limit",
+      warehouseKey("batch.datareader.columns.limit"), 1000),
+  DISABLE_PRUNING_AND_PUSHDOWNS("disable.pruning.and.pushdowns",
+      warehouseKey("disable.pruning.and.pushdowns"), false),
+  USE_SPARK23X_SPECIFIC_READER("use.spark23x.specific.reader",
+      warehouseKey("use.spark23x.specific.reader"), true);
 
   private HWConf(String simpleKey, String qualifiedKey, Object defaultValue) {
     this.simpleKey = simpleKey;
@@ -62,21 +70,30 @@ public enum HWConf {
   public static final String HIVESERVER2_CREDENTIAL_ENABLED = "spark.security.credentials.hiveserver2.enabled";
   public static final String HIVESERVER2_JDBC_URL_PRINCIPAL = "spark.sql.hive.hiveserver2.jdbc.url.principal";
   public static final String HIVESERVER2_JDBC_URL = "spark.sql.hive.hiveserver2.jdbc.url";
+  public static final String HIVESERVER2_JDBC_URL_CONF_LIST = "spark.sql.hive.conf.list";
   //possible values - client/cluster. default - client
   public static final String SPARK_SUBMIT_DEPLOYMODE = "spark.submit.deployMode";
   public static final String PARTITION_OPTION_KEY = "partition";
+
+  public static final String INVALID_READER_CONFIG_ERR_MSG =
+      String.format("Both the configs %s and %s cannot be true at the same time. Only one should be set.",
+          DISABLE_PRUNING_AND_PUSHDOWNS.getQualifiedKey(),
+          USE_SPARK23X_SPECIFIC_READER.getQualifiedKey());
+  public static final String INVALID_BATCH_DATAREADER_COLUMNS_LIMIT_CONFIG_ERR_MSG =
+          String.format("The config %s is invalid. It should be a valid integer > 0.",
+                  BATCH_DATAREADER_COLUMNS_LIMIT.getQualifiedKey());
 
   public String getQualifiedKey() {
     return qualifiedKey;
   }
 
   public void setString(HiveWarehouseSessionState state, String value) {
-    state.props.put(qualifiedKey, value);
+    state.getProps().put(qualifiedKey, value);
     state.session.sessionState().conf().setConfString(qualifiedKey, value);
   }
 
   public void setInt(HiveWarehouseSessionState state, Integer value) {
-    state.props.put(qualifiedKey, Integer.toString(value));
+    state.getProps().put(qualifiedKey, Integer.toString(value));
     state.session.sessionState().conf().setConfString(qualifiedKey, Integer.toString(value));
   }
 
@@ -87,22 +104,26 @@ public enum HWConf {
         .orElse(defaultValue == null ? null : defaultValue.toString());
   }
 
-  String getString(HiveWarehouseSessionState state) {
+  public String getString(HiveWarehouseSessionState state) {
     return Optional.
-      ofNullable((String) state.props.get(qualifiedKey)).
+      ofNullable((String) state.getProps().get(qualifiedKey)).
       orElse(state.session.sessionState().conf().getConfString(
         qualifiedKey, (String) defaultValue)
       );
   }
 
-  Integer getInt(HiveWarehouseSessionState state) {
+  public Integer getInt(HiveWarehouseSessionState state) {
     return Integer.parseInt(
       Optional.
-        ofNullable(state.props.get(qualifiedKey)).
+        ofNullable(state.getProps().get(qualifiedKey)).
         orElse(state.session.sessionState().conf().getConfString(
         qualifiedKey, defaultValue.toString())
       )
       );
+  }
+
+  public Object getDefaultValue() {
+    return this.defaultValue;
   }
 
   String simpleKey;
@@ -136,24 +157,32 @@ public enum HWConf {
    public static String getConnectionUrlFromConf(HiveWarehouseSessionState state) {
      SparkSession sparkSession = state.session;
      RuntimeConfig conf = sparkSession.conf();
+     StringBuilder jdbcUrl = new StringBuilder();
      if ((conf.contains(HIVESERVER2_CREDENTIAL_ENABLED) && conf.get(HIVESERVER2_CREDENTIAL_ENABLED).equals("true"))
          || conf.contains(HIVESERVER2_JDBC_URL_PRINCIPAL)) {
        String deployMode = conf.get(SPARK_SUBMIT_DEPLOYMODE, "client");
        LOG.debug("Getting jdbc connection url for kerberized cluster with spark.submit.deployMode = {}", deployMode);
        if (deployMode.equals("cluster")) {
          // 1. YARN Cluster mode for kerberized clusters
-         return format("%s;auth=delegationToken", conf.get(HIVESERVER2_JDBC_URL));
+         jdbcUrl.append(format("%s;auth=delegationToken", conf.get(HIVESERVER2_JDBC_URL)));
        } else {
          // 2. YARN Client mode for kerberized clusters
-         return format("%s;principal=%s",
+         jdbcUrl.append(format("%s;principal=%s",
              conf.get(HIVESERVER2_JDBC_URL),
-             conf.get(HIVESERVER2_JDBC_URL_PRINCIPAL));
+             conf.get(HIVESERVER2_JDBC_URL_PRINCIPAL)));
        }
      } else {
        LOG.debug("Getting jdbc connection url for non-kerberized cluster");
        // 3. For non-kerberized cluster
-       return conf.get(HIVESERVER2_JDBC_URL);
+       jdbcUrl.append(conf.get(HIVESERVER2_JDBC_URL));
      }
+
+     if (conf.contains(HIVESERVER2_JDBC_URL_CONF_LIST) &&
+         StringUtils.isNotBlank(conf.get(HIVESERVER2_JDBC_URL_CONF_LIST))) {
+       jdbcUrl.append("?").append(conf.get(HIVESERVER2_JDBC_URL_CONF_LIST));
+     }
+
+     return jdbcUrl.toString();
    }
 
 }

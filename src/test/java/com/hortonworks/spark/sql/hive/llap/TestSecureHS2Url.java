@@ -1,5 +1,6 @@
 package com.hortonworks.spark.sql.hive.llap;
 
+import com.hortonworks.spark.sql.hive.llap.common.HWConf;
 import org.apache.spark.sql.SparkSession;
 import org.junit.After;
 import org.junit.Before;

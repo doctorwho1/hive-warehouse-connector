@@ -23,8 +23,8 @@ public class HiveStreamingDataSource implements DataSourceV2, StreamWriteSupport
     return createDataSourceWriter(queryId, schema, options);
   }
 
-  private HiveStreamingDataSourceWriter createDataSourceWriter(final String id, final StructType schema,
-    final DataSourceOptions options) {
+  private HiveStreamingDataSourceStreamWriter createDataSourceWriter(final String id, final StructType schema,
+                                                                     final DataSourceOptions options) {
     String dbName = null;
     if(options.get("default.db").isPresent()) {
       dbName = options.get("default.db").get();
@@ -38,7 +38,7 @@ public class HiveStreamingDataSource implements DataSourceV2, StreamWriteSupport
     String metastoreKerberosPrincipal = options.get("metastoreKrbPrincipal").orElse(null);
     LOG.info("OPTIONS - database: {} table: {} partition: {} metastoreUri: {} metastoreKerberosPrincipal: {}",
       dbName, tableName, partition, metastoreUri, metastoreKerberosPrincipal);
-    return new HiveStreamingDataSourceWriter(id, schema, dbName, tableName,
+    return new HiveStreamingDataSourceStreamWriter(id, schema, dbName, tableName,
       partitionValues, metastoreUri, metastoreKerberosPrincipal);
   }
 

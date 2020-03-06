@@ -2,6 +2,7 @@ package com.hortonworks.spark.sql.hive.llap;
 
 import java.util.List;
 
+import com.hortonworks.spark.sql.hive.llap.writers.streaming.HiveStreamingDataWriterFactory;
 import org.apache.spark.sql.catalyst.InternalRow;
 import org.apache.spark.sql.sources.v2.writer.DataWriterFactory;
 import org.apache.spark.sql.sources.v2.writer.SupportsWriteInternalRow;

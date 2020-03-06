@@ -1,5 +1,6 @@
 package com.hortonworks.spark.sql.hive.llap;
 
+import com.hortonworks.spark.sql.hive.llap.common.HWConf;
 import com.hortonworks.spark.sql.hive.llap.util.QueryExecutionUtil.ExecutionMethod;
 import org.apache.spark.sql.Row;
 import org.junit.Test;
