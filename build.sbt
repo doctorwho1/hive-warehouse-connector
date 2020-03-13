@@ -210,7 +210,10 @@ assemblyShadeRules in assembly := Seq(
   ShadeRule.rename("org.apache.derby.**" -> "shadederby.@0").inAll,
   ShadeRule.rename("org.apache.thrift.**" -> "shadethrift.@0").inAll,
   ShadeRule.rename("com.facebook.fb303.**" -> "shadethrift.@0").inAll,
-  ShadeRule.rename("io.netty.**" -> "shadenetty.@0").inAll,
+  ShadeRule.rename("io.netty.**" -> "shadenetty.@0")
+    .inLibrary("io.netty" % "netty-all" % "4.1.17.Final")
+    .inLibrary("io.netty" % "netty-buffer" % "4.1.17.Final")
+    .inProject,
   ShadeRule.rename("org.jboss.netty.**" -> "shadejbossnetty.@0").inAll,
   ShadeRule.rename("org.codehaus.jackson.**" -> "shadejackson.@0").inAll,
   ShadeRule.rename("com.fasterxml.**" -> "shadefasterxml.@0").inAll,
