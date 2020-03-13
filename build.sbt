@@ -13,7 +13,7 @@ val scalatestVersion = "2.2.6"
 sparkVersion := sys.props.getOrElse("spark.version", "2.3.0")
 
 val hadoopVersion = sys.props.getOrElse("hadoop.version", "3.0.0")
-val hiveVersion = sys.props.getOrElse("hive.version", "3.0.0")
+val hiveVersion = sys.props.getOrElse("hive.version", "3.1.0.3.1.4.32-1")
 val log4j2Version = sys.props.getOrElse("log4j2.version", "2.4.1")
 val tezVersion = sys.props.getOrElse("tez.version", "0.9.1")
 val thriftVersion = sys.props.getOrElse("thrift.version", "0.9.3-1")
@@ -264,7 +264,10 @@ assemblyShadeRules in assembly := Seq(
   ShadeRule.rename("org.apache.curator.**" -> "shadecurator.@0").inAll,
   ShadeRule.rename("org.apache.orc.**" -> "shadeorc@0").inAll,
   ShadeRule.rename("org.apache.derby.**" -> "shadederby.@0").inAll,
-  ShadeRule.rename("io.netty.**" -> "shadenetty.@0").inAll
+  ShadeRule.rename("io.netty.**" -> "shadenetty.@0")
+    .inLibrary("io.netty" % "netty-all" % "4.1.17.Final")
+    .inLibrary("io.netty" % "netty-buffer" % "4.1.17.Final")
+    .inProject
 )
 test in assembly := {}
 
