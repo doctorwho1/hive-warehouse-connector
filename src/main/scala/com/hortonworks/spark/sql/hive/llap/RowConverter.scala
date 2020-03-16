@@ -16,9 +16,10 @@
  */
 package com.hortonworks.spark.sql.hive.llap
 
+import org.apache.hadoop.hive.common.`type`.Timestamp
+
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
-
 import org.apache.hadoop.hive.llap.Schema
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector.Category
 import org.apache.hadoop.hive.serde2.typeinfo._
@@ -45,7 +46,15 @@ object RowConverter {
     } else {
       colType.getCategory match {
         // The primitives should not require conversion
-        case Category.PRIMITIVE => value
+        case Category.PRIMITIVE =>
+          // special handling for timestamp types
+          // otherwise spark throws
+          // java.lang.RuntimeException: shadehive.org.apache.hadoop.hive.common.type.Timestamp
+          // is not a valid external type for schema of timestamp
+          if ("timestamp".equals(colType.getTypeName)) {
+            return value.asInstanceOf[Timestamp].toSqlTimestamp()
+          }
+          value
         case Category.LIST => value.asInstanceOf[java.util.List[Any]].asScala.map(
           listElement => convertValue(
               listElement,
