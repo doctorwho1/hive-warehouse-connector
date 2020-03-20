@@ -52,7 +52,9 @@ object RowConverter {
           // java.lang.RuntimeException: shadehive.org.apache.hadoop.hive.common.type.Timestamp
           // is not a valid external type for schema of timestamp
           if ("timestamp".equals(colType.getTypeName)) {
-            return value.asInstanceOf[Timestamp].toSqlTimestamp()
+            return value.asInstanceOf[Timestamp].toSqlTimestamp
+          } else if ("date".equals(colType.getTypeName)) {
+            return java.sql.Date.valueOf(value.toString)
           }
           value
         case Category.LIST => value.asInstanceOf[java.util.List[Any]].asScala.map(
