@@ -101,6 +101,8 @@ public class HiveWarehouseSessionImpl extends com.hortonworks.hwc.HiveWarehouseS
     hwcSessionStateRef = new AtomicReference<>(HwcSessionState.OPEN);
     if (HWConf.getHwcExecutionMode(sessionState).equalsIgnoreCase(HWConf.HWC_EXECUTION_MODE_SPARK)) {
       HiveAcidTxnManagerObject.registerTxnListeners(session());
+      sessionState.session.conf().set("spark.kryo.registrator",
+              "com.qubole.spark.hiveacid.util.HiveAcidKyroRegistrator");
     }
     LOG.info("Created a new HWC session: {}", sessionId);
   }
